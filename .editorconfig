@@ -1,0 +1,28 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+
+# KSP configs: tabs, as in the stock files. UTF-8 WITHOUT a byte-order mark (the validator checks this).
+[*.cfg]
+indent_style = tab
+
+[*.{csproj,props,targets}]
+indent_style = space
+indent_size = 2
+
+[*.md]
+indent_style = space
+indent_size = 2
+max_line_length = 120
+
+[*.ps1]
+indent_style = space
+indent_size = 4

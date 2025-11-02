@@ -1,0 +1,11 @@
+# Text is stored and checked out with LF, as .editorconfig asks, whatever core.autocrlf says.
+* text=auto eol=lf
+
+# Binaries: never converted or diffed as text.
+*.dll binary
+*.dds binary
+*.png binary
+*.jpg binary
+*.mu binary
+*.pdf binary
+*.zip binary
