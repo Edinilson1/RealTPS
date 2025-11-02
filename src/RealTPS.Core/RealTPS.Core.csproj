@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Pure C# model: no KSP or Unity references. Built as netstandard2.0 for the tests and tools.
+    The KSP plugin compiles these same source files directly (see RealTPS.KSP.csproj),
+    so the game loads a single assembly.
+  -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>RealTPS.Core</RootNamespace>
+    <AssemblyName>RealTPS.Core</AssemblyName>
+    <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+</Project>
