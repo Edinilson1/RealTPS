@@ -6,6 +6,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{0DE02236-7B9
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealTPS.Core", "src\RealTPS.Core\RealTPS.Core.csproj", "{E0437CDB-04F8-4229-BDEC-1D1BD8B97571}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{E6BD92B9-3FA5-482E-8386-622C280F4027}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RealTPS.Core.Tests", "tests\RealTPS.Core.Tests\RealTPS.Core.Tests.csproj", "{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -19,8 +23,13 @@ Global
 		{E0437CDB-04F8-4229-BDEC-1D1BD8B97571}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E0437CDB-04F8-4229-BDEC-1D1BD8B97571}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E0437CDB-04F8-4229-BDEC-1D1BD8B97571}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{E0437CDB-04F8-4229-BDEC-1D1BD8B97571} = {0DE02236-7B9E-4E33-B63F-00540D1AC52D}
+		{35C7DB41-E7D8-427F-A7A4-659DDEDF6B4F} = {E6BD92B9-3FA5-482E-8386-622C280F4027}
 	EndGlobalSection
 EndGlobal
