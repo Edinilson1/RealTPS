@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The KSP plugin. Output assembly: RealTPSRuntime.dll (ModuleManager :NEEDS[RealTPSRuntime] tests this name).
+
+    The game assemblies are referenced, never copied. Point KSPRoot at any KSP 1.12.x install:
+      dotnet build src/RealTPS.KSP -c Release -p:KSPRoot="C:\path\to\Kerbal Space Program"
+    or set the KSP_ROOT environment variable. The install is only read.
+
+    Only a Release build is copied into GameData/RealTPS/Plugins, so building or testing the whole solution
+    (Debug) never replaces the plugin that ships.
+
+    The pure model in ../RealTPS.Core is compiled into this assembly as source, so the
+    game loads one DLL. The calibration simulator and the patch generator are tool-only and excluded.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>RealTPSRuntime</AssemblyName>
+    <RootNamespace>RealTPS</RootNamespace>
+    <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Deterministic>true</Deterministic>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <KSPRoot Condition="'$(KSPRoot)' == ''">$(KSP_ROOT)</KSPRoot>
+    <KSPManaged>$(KSPRoot)/KSP_x64_Data/Managed</KSPManaged>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../RealTPS.Core/**/*.cs"
+             Exclude="../RealTPS.Core/obj/**;../RealTPS.Core/bin/**;../RealTPS.Core/Simulation/**;../RealTPS.Core/Generation/**"
+             Link="Core/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(KSPManaged)/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(KSPManaged)/UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(KSPManaged)/UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Every Release build refreshes the plugin inside the installable GameData folder. -->
+  <Target Name="RtpsCopyToGameData" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildProjectDirectory)/../../GameData/RealTPS/Plugins" />
+  </Target>
+
+  <Target Name="RtpsCheckKspRoot" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="!Exists('$(KSPManaged)/Assembly-CSharp.dll')"
+           Text="KSP assemblies not found. Pass -p:KSPRoot=&quot;path to Kerbal Space Program&quot; or set KSP_ROOT. Looked in: $(KSPManaged)" />
+  </Target>
+
+</Project>
