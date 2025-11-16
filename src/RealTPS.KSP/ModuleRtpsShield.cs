@@ -79,6 +79,7 @@ namespace RealTPS
         [NonSerialized] private MaterialDefinition material;
         [NonSerialized] private bool started;
         [NonSerialized] private PartResource mirror;
+        [NonSerialized] private float nextUiRefresh;
 
         // ----- public read-only API -----
 
@@ -86,6 +87,25 @@ namespace RealTPS
         public bool IsActive
         {
             get { return mode == Mode.Active && material != null; }
+        }
+
+        /// <summary>Remaining share of the consumable over the whole face, 0..1; 1 for materials without one.</summary>
+        public double RemainingFraction
+        {
+            get
+            {
+                if (mode != Mode.Active || material == null || !material.HasConsumable || !(tpsCapacity > 0.0))
+                {
+                    return 1.0;
+                }
+                return AblationSolver.Clamp01(tpsInventory / tpsCapacity);
+            }
+        }
+
+        /// <summary>Equivalent remaining thickness of the consumable layer averaged over the face, m.</summary>
+        public double RemainingThickness
+        {
+            get { return mode == Mode.Active && material != null && material.HasConsumable ? AblationSolver.EquivalentThickness(material, tpsInventory, tpsArea) : 0.0; }
         }
 
         // ================================================================================================
@@ -218,6 +238,94 @@ namespace RealTPS
                 RtpsLog.Info(PartLabel() + ": thermal protection exhausted at skin " + F(part.skinTemperature) + " K");
             }
 
+        }
+
+        // ================================================================================================
+        // Display
+        // ================================================================================================
+
+        public void Update()
+        {
+            if (!started || Time.unscaledTime < nextUiRefresh)
+            {
+                return;
+            }
+            nextUiRefresh = Time.unscaledTime + 0.25f;
+            RefreshUi();
+        }
+
+        private void RefreshUi()
+        {
+            bool flight = HighLogic.LoadedSceneIsFlight;
+            bool active = mode == Mode.Active && material != null;
+
+            uiMaterial = DisplayName();
+            uiStatus = StatusText();
+
+            bool consumable = active && tpsCapacity > 0.0;
+            BaseField remaining = Fields["uiRemaining"];
+            if (remaining != null)
+            {
+                remaining.guiActive = flight && consumable;
+            }
+            if (consumable)
+            {
+                uiRemaining = (100.0 * RemainingFraction).ToString("F0", CultureInfo.InvariantCulture) + "%  (" + (RemainingThickness * 1000.0).ToString("F1", CultureInfo.InvariantCulture) + " mm)";
+            }
+
+            BaseField limit = Fields["uiLimit"];
+            if (limit != null)
+            {
+                limit.guiActive = active;
+                limit.guiActiveEditor = active;
+            }
+            if (active)
+            {
+                double surface = material.MaxSurfaceTemp;
+                uiLimit = surface.ToString("F0", CultureInfo.InvariantCulture) + " K";
+            }
+
+        }
+
+        private string DisplayName()
+        {
+            MaterialDefinition listed;
+            string name;
+            if (RtpsCatalogue.Current.TryGet(materialId, out listed) && !string.IsNullOrEmpty(listed.DisplayName))
+            {
+                name = Localizer.Format(listed.DisplayName);
+            }
+            else if (material != null && !string.IsNullOrEmpty(material.DisplayName))
+            {
+                name = Localizer.Format(material.DisplayName);
+            }
+            else
+            {
+                name = materialId;
+            }
+            return name;
+        }
+
+        private string StatusText()
+        {
+            switch (mode)
+            {
+                case Mode.Unresolved:
+                    return Localizer.Format("#LOC_RTPS_status_unresolved");
+            }
+            if (!HighLogic.LoadedSceneIsFlight)
+            {
+                return Localizer.Format("#LOC_RTPS_status_ready");
+            }
+            if (tpsDepleted)
+            {
+                return Localizer.Format("#LOC_RTPS_status_depleted");
+            }
+            if (sinkPowerKw > 0.0)
+            {
+                return Localizer.Format("#LOC_RTPS_status_ablating");
+            }
+            return Localizer.Format("#LOC_RTPS_status_nominal");
         }
 
         // ================================================================================================
