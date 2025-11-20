@@ -121,4 +121,60 @@ namespace RealTPS.Core.Tests
             Assert.Throws<CfgParser.ParseException>(() => CfgParser.Parse(text));
         }
     }
+
+    public class HostTests
+    {
+        private const string HostCfg = @"
+RTPS_HOST
+{
+    part = TestShield
+    hostClass = rigid_disc
+    partRole = dedicated
+    area = 1.2
+    substrateMaxTemp = 1100
+    materials = test-ablator, test-tile
+}";
+
+        private static MaterialCatalogue Catalogue()
+        {
+            return MaterialCatalogue.Load(new[]
+            {
+                CfgParser.Parse(TestMaterials.AblatorCfg).Nodes[0],
+                CfgParser.Parse(TestMaterials.TileCfg).Nodes[0],
+                CfgParser.Parse(TestMaterials.CarbonCfg).Nodes[0]
+            });
+        }
+
+        private static HostDefinition ParseHost(string cfg, List<ValidationIssue> issues)
+        {
+            return HostDefinition.Parse(CfgParser.Parse(cfg).Nodes[0], issues);
+        }
+
+        private static string Host(string part, string needs)
+        {
+            return "RTPS_HOST\n{\n part = " + part + (needs.Length > 0 ? "\n needs = " + needs : string.Empty)
+                + "\n hostClass = rigid_disc\n partRole = dedicated\n area = 1\n substrateMaxTemp = 1100\n materials = test-ablator\n}";
+        }
+
+        private static string UnlockOf(params HostDefinition[] hosts)
+        {
+            MaterialCatalogue catalogue = MaterialCatalogue.Load(CfgParser.Parse(
+                TestMaterials.AblatorCfg.Replace("costPerKg = 2", "costPerKg = 2\n    techNode = landing\n    unlockCost = 100")).GetNodes(MaterialParser.NodeName));
+            Assert.DoesNotContain(catalogue.Issues, i => i.IsError);
+            return RealTPS.Core.Generation.PatchGenerator.Upgrades(catalogue, hosts);
+        }
+
+        [Theory]
+        [InlineData("materials = test-ablator, test-tile", "materials = ")]
+        [InlineData("materials = test-ablator, test-tile", "materials = test-ablator, test-ablator")]
+        [InlineData("part = TestShield", "part = *")]
+        [InlineData("area = 1.2", "area = 0")]
+        [InlineData("substrateMaxTemp = 1100", "")]
+        public void BrokenHostsAreRejected(string find, string replace)
+        {
+            var issues = new List<ValidationIssue>();
+            Assert.Null(ParseHost(HostCfg.Replace(find, replace), issues));
+            Assert.Contains(issues, i => i.IsError);
+        }
+    }
 }
