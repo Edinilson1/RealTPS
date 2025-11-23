@@ -166,6 +166,7 @@ namespace RealTPS
                 problem = Localizer.Format("#LOC_RTPS_msg_unknown_material", materialId);
             }
 
+            tpsDepleted = false;
             material = requested;
             mode = Mode.Active;
             CaptureInventoryFromPart();
