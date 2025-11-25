@@ -1,0 +1,34 @@
+# RealTPS
+
+***Made for every Kerbonaut who was ever toasted in the atmosphere.***
+
+### Welcome to RealTPS
+
+RealTPS (Real Thermal Protection Systems) is a Kerbal Space Program mod that reworks how heat shields work, going
+for more realism. Instead of the one generic "Ablator" you get a catalogue of real thermal protection materials,
+and a heat shield is no longer just a bar that drains.
+
+## Current version: 0.1.0
+
+**KSP version**: 1.12.x\
+**Requires**: [ModuleManager], [B9PartSwitch]
+
+## Download and installation
+
+1. Back up your saves.
+2. Copy `GameData/RealTPS` from the zip into your KSP `GameData` folder.
+3. Make sure ModuleManager and B9PartSwitch are installed. Without them RealTPS does nothing, and a message tells
+   you why.
+
+## Materials
+
+**Ablators**: they burn away and take the heat with them.
+
+| Material | What it is | Best for |
+|---|---|---|
+| Cork-Phenolic | Ground cork in resin, available from the start | Suborbital hops and low orbit |
+| Phenolic-Fiberglass | The heat shield of the first capsules | Low orbit, steep Mun returns |
+| Avcoat Honeycomb | The Apollo and Orion ablator | Mun returns, interplanetary returns of moderate mass |
+
+[ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
+[B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
