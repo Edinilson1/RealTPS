@@ -27,6 +27,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>Material ids in display order; index 0 is the baseline.</summary>
         public List<string> Materials = new List<string>();
 
+        /// <summary>Stock ablator declared by the original part, kg (0 when it has none). Used for cost correction.</summary>
+        public double StockAblator;
+
         /// <summary>True when the original part has a stock <c>ModuleAblator</c> that the patch must replace.</summary>
         public bool ReplacesStockAblator;
 
@@ -67,6 +70,7 @@ namespace RealTPS.Core.Hosts
                 issues.Add(new ValidationIssue(true, subject, "area must be a positive number of square metres"));
             }
             host.Materials = node.GetList("materials");
+            node.TryGetDouble("stockAblator", out host.StockAblator);
             host.Title = (node.GetValue("title") ?? host.PartName).Trim();
             host.ReplacesStockAblator = string.Equals((node.GetValue("replacesStockAblator") ?? "false").Trim(), "true", StringComparison.OrdinalIgnoreCase);
 

@@ -172,5 +172,22 @@ namespace RealTPS.Core.Tests
                 Assert.Contains(m.ConsumableResource, names);
             }
         }
+
+        [Fact]
+        public void StockRigidHostsRemoveTheStockAblatorAndCorrectTheCost()
+        {
+            MaterialCatalogue catalogue = LoadCatalogue();
+            List<HostDefinition> hosts = LoadHosts(catalogue, new List<ValidationIssue>());
+            string text = Read(GeneratedFiles.StockHosts);
+            CfgNode root = CfgParser.Parse(text);
+            foreach (HostDefinition host in hosts.Where(h => h.ReplacesStockAblator))
+            {
+                CfgNode patch = root.Nodes.Single(n => n.Name.StartsWith("@PART[" + host.PartName + "]", StringComparison.Ordinal));
+                Assert.NotNull(patch.GetNode("!MODULE[ModuleAblator]"));
+                Assert.NotNull(patch.GetNode("!RESOURCE[Ablator]"));
+                Assert.Equal((host.StockAblator * 0.5).ToString(System.Globalization.CultureInfo.InvariantCulture), patch.GetValue("@cost -"));
+            }
+            Assert.DoesNotContain("@cost - =", text);
+        }
     }
 }

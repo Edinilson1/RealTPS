@@ -100,6 +100,11 @@ namespace RealTPS.Core.Generation
             {
                 sb.Append("\t!MODULE[ModuleAblator] {}\n");
                 sb.Append("\t!RESOURCE[Ablator] {}\n");
+                if (host.StockAblator > 0.0)
+                {
+                    // Stock part cost includes the stock ablator (0.5 funds per unit); B9 adds each subtype's own.
+                    sb.Append("\t@cost -= ").Append(F(host.StockAblator * 0.5)).Append('\n');
+                }
             }
 
             if (baseline.HasConsumable)
