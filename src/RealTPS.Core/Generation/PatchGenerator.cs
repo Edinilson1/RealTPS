@@ -98,6 +98,7 @@ namespace RealTPS.Core.Generation
 
             if (host.ReplacesStockAblator)
             {
+                sb.Append("\t!MODULE[ModuleAblator] {}\n");
                 sb.Append("\t!RESOURCE[Ablator] {}\n");
             }
 
