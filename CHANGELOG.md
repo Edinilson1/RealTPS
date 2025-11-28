@@ -3,6 +3,16 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.1.1 for KSP 1.12.x
+
+ - 2025-11-27
+
+### Changes since the previous version
+
+* Fixed: The stock `ModuleAblator` is removed from enrolled shields, not only its resource: it initialises only in
+  flight and kept writing the part's conductivity even with nothing to ablate.
+* Fixed: Enrolled shields no longer charge for the stock Ablator they don't carry anymore.
+
 ## v0.1.0 for KSP 1.12.x
 
  - 2025-11-25
