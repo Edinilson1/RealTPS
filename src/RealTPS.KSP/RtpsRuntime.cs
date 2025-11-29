@@ -69,6 +69,7 @@ namespace RealTPS
     public static class RtpsCatalogue
     {
         private static MaterialCatalogue current;
+        private static bool hooked;
 
         /// <summary>The loaded catalogue. Never null; empty when the game database is not available.</summary>
         public static MaterialCatalogue Current
@@ -95,6 +96,13 @@ namespace RealTPS
                     nodes.Add(ConfigNodeBridge.ToCfg(materials[i]));
                 }
 
+
+                if (!hooked)
+                {
+                    hooked = true;
+                    // KSP's event system dereferences the delegate target, so a static method cannot subscribe.
+                    GameEvents.OnGameDatabaseLoaded.Add(Hook.OnDatabaseLoaded);
+                }
             }
 
             try
@@ -118,6 +126,16 @@ namespace RealTPS
                 {
                     RtpsLog.Warn("catalogue: " + issue);
                 }
+            }
+        }
+
+        private static readonly DatabaseHook Hook = new DatabaseHook();
+
+        private sealed class DatabaseHook
+        {
+            public void OnDatabaseLoaded()
+            {
+                current = null;
             }
         }
     }
