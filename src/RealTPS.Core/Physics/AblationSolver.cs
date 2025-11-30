@@ -49,6 +49,9 @@ namespace RealTPS.Core.Physics
     /// </summary>
     public static class AblationSolver
     {
+        /// <summary>Largest step the rate law is integrated over; longer steps are treated as this long.</summary>
+        public const double MaxStep = 1.0;
+
         /// <summary>
         /// Advances the material by one step. The energy bound applies to this sink in isolation: it guarantees
         /// that RealTPS alone never takes the skin below the onset temperature within a step; the host engine may
@@ -69,7 +72,7 @@ namespace RealTPS.Core.Physics
                 return result;
             }
 
-            double dt = input.Dt;
+            double dt = Math.Min(input.Dt, MaxStep);
             double remaining = input.RemainingMass;
 
             AblationChannel ablation = material.Ablation;

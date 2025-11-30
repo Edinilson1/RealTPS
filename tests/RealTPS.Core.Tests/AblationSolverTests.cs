@@ -89,6 +89,19 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void HugeStepIsBounded()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            StepInput a = Nominal();
+            a.Dt = AblationSolver.MaxStep;
+            a.SkinHeatCapacity = 1.0e12;
+            a.RemainingMass = 1.0e6;
+            StepInput b = a;
+            b.Dt = 1.0e9;
+            Assert.Equal(AblationSolver.Step(m, a).PyrolysedMass, AblationSolver.Step(m, b).PyrolysedMass, 12);
+        }
+
+        [Fact]
         public void LongEntryNeverOverdrawsInventory()
         {
             MaterialDefinition m = TestMaterials.Ablator();
