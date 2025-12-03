@@ -3,6 +3,17 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.1.2 for KSP 1.12.x
+
+ - 2025-12-02
+
+### Changes since the previous version
+
+* Fixed: Reloading the game database from the debug menu threw a `NullReferenceException`; the materials now
+  reload with it.
+* Changed: A physics step longer than one second (a lag spike) is cut to one second: less burning and less
+  cooling, never more.
+
 ## v0.1.1 for KSP 1.12.x
 
  - 2025-11-27
