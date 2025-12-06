@@ -120,6 +120,18 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EmissivityBlendsFromVirginToChar()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            Assert.Equal(0.7, AblationSolver.SurfaceEmissivity(m, 0.0), 12);
+            Assert.Equal(0.8, AblationSolver.SurfaceEmissivity(m, 0.025), 12);
+            Assert.Equal(0.9, AblationSolver.SurfaceEmissivity(m, 0.05), 12);
+            Assert.Equal(0.9, AblationSolver.SurfaceEmissivity(m, 1.0), 12);
+            Assert.Equal(0.7, AblationSolver.SurfaceEmissivity(m, double.NaN), 12);
+            Assert.Equal(0.85, AblationSolver.SurfaceEmissivity(TestMaterials.Tile(), 0.9), 12);
+        }
+
+        [Fact]
         public void EquivalentThicknessMatchesDensityAndArea()
         {
             MaterialDefinition m = TestMaterials.Ablator();

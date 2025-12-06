@@ -58,6 +58,12 @@ namespace RealTPS.Core.Materials
 
         public double Emissivity;
 
+        /// <summary>Emissivity once the surface has charred. Equals <see cref="Emissivity"/> for non-charring materials.</summary>
+        public double CharEmissivity;
+
+        /// <summary>Pyrolysed fraction of the inventory at which the surface counts as fully charred, 0..1.</summary>
+        public double CharSurfaceFraction = 0.05;
+
         /// <summary>
         /// Native catastrophic fallback, K: the skin temperature at which the stock engine destroys the part
         /// while the shield has not failed. The criterion behind the number (single-use limit, melting,

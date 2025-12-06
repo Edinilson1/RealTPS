@@ -17,6 +17,7 @@ RTPS_MATERIAL
     designThickness = 0.05
     specificHeat = 1500
     emissivity = 0.7
+    charEmissivity = 0.9
     maxSurfaceTemp = 2500
     ABLATION
     {

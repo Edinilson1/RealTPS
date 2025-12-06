@@ -94,6 +94,24 @@ namespace RealTPS.Core.Physics
             return result;
         }
 
+        /// <summary>
+        /// Surface emissivity for a given pyrolysed fraction of the design inventory: virgin value blending
+        /// linearly to the char value once <see cref="MaterialDefinition.CharSurfaceFraction"/> has pyrolysed.
+        /// </summary>
+        public static double SurfaceEmissivity(MaterialDefinition material, double pyrolysedFraction)
+        {
+            if (material == null)
+            {
+                throw new ArgumentNullException(nameof(material));
+            }
+            if (material.Ablation == null || double.IsNaN(pyrolysedFraction))
+            {
+                return material.Emissivity;
+            }
+            double t = Clamp01(pyrolysedFraction / material.CharSurfaceFraction);
+            return material.Emissivity + (material.CharEmissivity - material.Emissivity) * t;
+        }
+
         /// <summary>Inventory below this mass counts as exhausted, kg.</summary>
         public const double DepletionThreshold = 1.0e-6;
 
