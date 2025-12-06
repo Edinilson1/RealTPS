@@ -29,6 +29,9 @@ and a heat shield is no longer just a bar that drains.
 | Cork-Phenolic | Ground cork in resin, available from the start | Suborbital hops and low orbit |
 | Phenolic-Fiberglass | The heat shield of the first capsules | Low orbit, steep Mun returns |
 | Avcoat Honeycomb | The Apollo and Orion ablator | Mun returns, interplanetary returns of moderate mass |
+| SLA-561V | A very light Mars-lander ablator | Gentle entries and thin atmospheres |
+| Carbon-Phenolic | A dense carbon composite for the harshest entries | Anything, if you can carry the mass |
+| PICA | A light carbon ablator | Light craft on fast returns |
 
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
