@@ -33,6 +33,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>True when the original part has a stock <c>ModuleAblator</c> that the patch must replace.</summary>
         public bool ReplacesStockAblator;
 
+        /// <summary>Name of the char colour module on the part, or empty.</summary>
+        public string CharModuleName = string.Empty;
+
         /// <summary>Human-readable part title used in generated comments.</summary>
         public string Title = string.Empty;
 
@@ -70,6 +73,7 @@ namespace RealTPS.Core.Hosts
                 issues.Add(new ValidationIssue(true, subject, "area must be a positive number of square metres"));
             }
             host.Materials = node.GetList("materials");
+            host.CharModuleName = (node.GetValue("charModuleName") ?? string.Empty).Trim();
             node.TryGetDouble("stockAblator", out host.StockAblator);
             host.Title = (node.GetValue("title") ?? host.PartName).Trim();
             host.ReplacesStockAblator = string.Equals((node.GetValue("replacesStockAblator") ?? "false").Trim(), "true", StringComparison.OrdinalIgnoreCase);

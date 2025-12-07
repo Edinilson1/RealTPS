@@ -30,6 +30,10 @@ namespace RealTPS
         /// <summary>Protected area, m^2.</summary>
         [KSPField] public double tpsArea;
 
+        [KSPField] public string charModuleName = string.Empty;
+        [KSPField] public float charMax = 0.85f;
+        [KSPField] public float charMin = 0.1f;
+
         /// <summary><c>moduleID</c> of the B9PartSwitch module that selects the material.</summary>
         [KSPField] public string switcherModuleId = "rtpsMaterial";
 
@@ -46,6 +50,9 @@ namespace RealTPS
 
         /// <summary>Consumable capacity at commit, kg.</summary>
         [KSPField(isPersistant = true)] public double tpsCapacity;
+
+        /// <summary>Inventory pyrolysed so far, kg (drives the char emissivity; erosion is not counted).</summary>
+        [KSPField(isPersistant = true)] public double tpsPyrolysed;
 
         // ----- read-only contract and display -----
 
@@ -79,6 +86,8 @@ namespace RealTPS
         [NonSerialized] private MaterialDefinition material;
         [NonSerialized] private bool started;
         [NonSerialized] private PartResource mirror;
+        [NonSerialized] private IScalarModule charModule;
+        [NonSerialized] private float lastCharScalar = -1f;
         [NonSerialized] private float nextUiRefresh;
 
         // ----- public read-only API -----
@@ -120,6 +129,10 @@ namespace RealTPS
         {
             base.OnStart(startState);
             started = true;
+            if (!string.IsNullOrEmpty(charModuleName))
+            {
+                charModule = part.Modules.GetScalarModule(charModuleName);
+            }
         }
 
         public override void OnStartFinished(StartState startState)
@@ -166,6 +179,7 @@ namespace RealTPS
                 problem = Localizer.Format("#LOC_RTPS_msg_unknown_material", materialId);
             }
 
+            tpsPyrolysed = 0.0;
             tpsDepleted = false;
             material = requested;
             mode = Mode.Active;
@@ -220,6 +234,7 @@ namespace RealTPS
             ShieldSolver.Step(material, state, input, result);
 
             tpsInventory = state.TotalInventory;
+            tpsPyrolysed = state.TotalPyrolysed;
             if (mirror != null)
             {
                 mirror.amount = tpsInventory;
@@ -286,6 +301,23 @@ namespace RealTPS
                 uiLimit = surface.ToString("F0", CultureInfo.InvariantCulture) + " K";
             }
 
+
+            if (flight && active && charModule != null && material.Ablation != null && tpsCapacity > 0.0)
+            {
+                float scalar = charMin + (charMax - charMin) * (float)RemainingFraction;
+                if (Math.Abs(scalar - lastCharScalar) > 0.002f)
+                {
+                    lastCharScalar = scalar;
+                    try
+                    {
+                        charModule.SetScalar(scalar);
+                    }
+                    catch (Exception)
+                    {
+                        charModule = null;
+                    }
+                }
+            }
         }
 
         private string DisplayName()

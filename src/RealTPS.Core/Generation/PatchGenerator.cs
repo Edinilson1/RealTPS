@@ -120,6 +120,7 @@ namespace RealTPS.Core.Generation
             sb.Append("\tMODULE\n\t{\n");
             Line(sb, 2, "name", ModuleName);
             Line(sb, 2, "tpsArea", F(host.Area));
+            Line(sb, 2, "charModuleName", host.CharModuleName);
             Line(sb, 2, "switcherModuleId", SwitcherModuleId);
             Line(sb, 2, "materialId", baseline.Id);
             sb.Append("\t}\n");
