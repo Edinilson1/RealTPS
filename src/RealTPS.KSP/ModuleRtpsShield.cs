@@ -301,6 +301,11 @@ namespace RealTPS
                 uiLimit = surface.ToString("F0", CultureInfo.InvariantCulture) + " K";
             }
 
+            BaseField sink = Fields["sinkPowerKw"];
+            if (sink != null)
+            {
+                sink.guiActive = flight && active && PhysicsGlobals.ThermalDataDisplay;
+            }
 
             if (flight && active && charModule != null && material.Ablation != null && tpsCapacity > 0.0)
             {
