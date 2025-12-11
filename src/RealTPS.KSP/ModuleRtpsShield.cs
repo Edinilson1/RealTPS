@@ -366,6 +366,11 @@ namespace RealTPS
             return Localizer.Format("#LOC_RTPS_status_nominal");
         }
 
+        public override string GetInfo()
+        {
+            return Localizer.Format("#LOC_RTPS_info", tpsArea.ToString("0.##", CultureInfo.InvariantCulture));
+        }
+
         // ================================================================================================
         // Helpers
         // ================================================================================================
