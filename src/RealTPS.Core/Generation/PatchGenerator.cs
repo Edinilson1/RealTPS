@@ -150,6 +150,8 @@ namespace RealTPS.Core.Generation
             sb.Append("\t\tSUBTYPE\n\t\t{\n");
             Line(sb, 3, "name", m.Id);
             Line(sb, 3, "title", TagStem(m) + "_title");
+            Line(sb, 3, "descriptionSummary", TagStem(m) + "_desc");
+            Line(sb, 3, "descriptionDetail", TagStem(m) + "_detail");
             // The baseline has the highest priority so that tank-less hosts also default to it.
             Line(sb, 3, "defaultSubtypePriority", (index == 0 ? 100 : 50 - index).ToString(CultureInfo.InvariantCulture));
             Line(sb, 3, "allowSwitchInFlight", "false");
