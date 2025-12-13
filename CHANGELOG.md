@@ -3,6 +3,19 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.2.0 for KSP 1.12.x
+
+ - 2025-12-13
+
+### Changes since the previous version
+
+* Added: SLA-561V, Carbon-Phenolic and PICA, on all four shields.
+* Added: Char. The surface emissivity changes from the virgin material's to the char's as the material burns, and
+  the stock shields darken as they lose material.
+* Added: An Ablation cooling line (kW) in the part menu while the game's thermal data display is on.
+* Added: The part info in the editor shows the protected area, and that the material can't be changed in flight.
+* Added: Each material has a description and a detail line in the selector.
+
 ## v0.1.2 for KSP 1.12.x
 
  - 2025-12-02
