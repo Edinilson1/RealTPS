@@ -12,6 +12,9 @@ namespace RealTPS.Core.Physics
         /// <summary>Temperature of the exposed skin, K.</summary>
         public double SkinTemp;
 
+        /// <summary>Heat capacity of the skin region the sink is applied to, J/K.</summary>
+        public double SkinHeatCapacity;
+
         /// <summary>Protected (TPS) area of the host, m^2.</summary>
         public double Area;
 
@@ -81,8 +84,13 @@ namespace RealTPS.Core.Physics
                 double arealRate = ablation.RateCoefficient * Math.Exp(-ablation.ActivationTemp / input.SkinTemp);
                 double pyrolysed = arealRate * input.Area * dt;
 
+                // No free cooling: the sink may not pull the skin below the onset temperature within one step.
+                // Without a usable heat capacity the bound is unknown, so no sink is applied at all.
+                double capacity = IsUsable(input.SkinHeatCapacity) ? input.SkinHeatCapacity : 0.0;
+                double energyBudget = capacity * (input.SkinTemp - ablation.OnsetTemp);
+                double budgetMass = energyBudget / ablation.HeatOfAblation;
 
-                pyrolysed = Math.Min(pyrolysed, remaining);
+                pyrolysed = Math.Min(pyrolysed, Math.Min(budgetMass, remaining));
                 if (pyrolysed > 0.0 && !double.IsNaN(pyrolysed))
                 {
                     result.PyrolysedMass = pyrolysed;

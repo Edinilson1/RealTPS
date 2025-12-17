@@ -89,6 +89,33 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void SinkIsClampedBySkinEnergyBudget()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            StepInput input = Nominal();
+            input.SkinTemp = 3000.0;
+            input.Dt = 1.0;
+            input.SkinHeatCapacity = 10.0;
+            StepResult r = AblationSolver.Step(m, input);
+            Assert.Equal(10.0 * (3000.0 - 600.0), r.HeatAbsorbed, 6);
+        }
+
+        [Theory]
+        [InlineData(double.NaN)]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(0.0)]
+        [InlineData(-5.0)]
+        public void UnknownHeatCapacityMeansNoSink(double capacity)
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            StepInput input = Nominal();
+            input.SkinHeatCapacity = capacity;
+            StepResult r = AblationSolver.Step(m, input);
+            Assert.Equal(0.0, r.PyrolysedMass);
+            Assert.Equal(0.0, r.HeatAbsorbed);
+        }
+
+        [Fact]
         public void HugeStepIsBounded()
         {
             MaterialDefinition m = TestMaterials.Ablator();
