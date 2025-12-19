@@ -3,6 +3,18 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.2.1 for KSP 1.12.x
+
+ - 2025-12-19
+
+### Changes since the previous version
+
+* Changed: The cooling of one step is limited to the heat stored in the skin above the onset temperature: RealTPS
+  alone never cools the surface below it, and applies no cooling at all when the skin's heat capacity can't be
+  read.
+* Changed: Bad readings from the game (NaN, infinity, a zero-length step) make a step do nothing instead of
+  producing cooling.
+
 ## v0.2.0 for KSP 1.12.x
 
  - 2025-12-13
