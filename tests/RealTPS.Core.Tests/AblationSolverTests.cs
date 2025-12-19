@@ -103,6 +103,30 @@ namespace RealTPS.Core.Tests
         [Theory]
         [InlineData(double.NaN)]
         [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NegativeInfinity)]
+        [InlineData(0.0)]
+        [InlineData(-1.0)]
+        public void InvalidInputsProduceNoEffect(double bad)
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            Func<StepInput, StepInput>[] mutations =
+            {
+                i => { i.Dt = bad; return i; },
+                i => { i.SkinTemp = bad; return i; },
+                i => { i.Area = bad; return i; },
+                i => { i.RemainingMass = bad; return i; }
+            };
+            foreach (Func<StepInput, StepInput> mutate in mutations)
+            {
+                StepResult r = AblationSolver.Step(m, mutate(Nominal()));
+                Assert.Equal(0.0, r.ConsumedMass);
+                Assert.Equal(0.0, r.HeatAbsorbed);
+            }
+        }
+
+        [Theory]
+        [InlineData(double.NaN)]
+        [InlineData(double.PositiveInfinity)]
         [InlineData(0.0)]
         [InlineData(-5.0)]
         public void UnknownHeatCapacityMeansNoSink(double capacity)
