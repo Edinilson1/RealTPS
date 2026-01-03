@@ -10,6 +10,7 @@ and a heat shield is no longer just a bar that drains.
 
 ## Current version: 0.2.1
 
+**License**: [MIT](LICENSE)\
 **KSP version**: 1.12.x\
 **Requires**: [ModuleManager], [B9PartSwitch]
 
@@ -32,6 +33,11 @@ and a heat shield is no longer just a bar that drains.
 | SLA-561V | A very light Mars-lander ablator | Gentle entries and thin atmospheres |
 | Carbon-Phenolic | A dense carbon composite for the harshest entries | Anything, if you can carry the mass |
 | PICA | A light carbon ablator | Light craft on fast returns |
+
+## License
+
+RealTPS is released under the [MIT license](LICENSE). It doesn't contain code, models or configs from any other
+mod.
 
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
