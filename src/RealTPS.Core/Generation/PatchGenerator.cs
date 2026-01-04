@@ -62,6 +62,7 @@ namespace RealTPS.Core.Generation
                 Line(sb, 1, "transfer", "NONE");
                 Line(sb, 1, "isTweakable", "true");
                 Line(sb, 1, "isVisible", "true");
+                Line(sb, 1, "unitCost", F(m.CostPerKg));
                 Line(sb, 1, "volume", "1");
                 sb.Append("\tRESOURCE_DRAIN_DEFINITION\n\t{\n");
                 Line(sb, 2, "isDrainable", "false");
@@ -154,6 +155,8 @@ namespace RealTPS.Core.Generation
             Line(sb, 3, "descriptionDetail", TagStem(m) + "_detail");
             // The baseline has the highest priority so that tank-less hosts also default to it.
             Line(sb, 3, "defaultSubtypePriority", (index == 0 ? 100 : 50 - index).ToString(CultureInfo.InvariantCulture));
+            Line(sb, 3, "addedMass", F(host.DryMass(m) * 0.001));
+            Line(sb, 3, "addedCost", F(host.DryCost(m)));
             Line(sb, 3, "allowSwitchInFlight", "false");
             Line(sb, 3, "allowSwitchFromInFlight", "false");
             if (m.HasConsumable)

@@ -164,6 +164,20 @@ RTPS_HOST
             return RealTPS.Core.Generation.PatchGenerator.Upgrades(catalogue, hosts);
         }
 
+        [Fact]
+        public void ValidHostPassesAndComputesMasses()
+        {
+            var issues = new List<ValidationIssue>();
+            HostDefinition host = ParseHost(HostCfg, issues);
+            Assert.NotNull(host);
+            Compatibility.ValidateHost(host, Catalogue(), issues);
+            Assert.DoesNotContain(issues, i => i.IsError);
+            Assert.Equal(30.0, host.ConsumableMass(TestMaterials.Ablator()), 9);
+            Assert.Equal(0.0, host.ConsumableMass(TestMaterials.Tile()), 9);
+            Assert.Equal(10.8, host.DryMass(TestMaterials.Tile()), 9);
+            Assert.Equal(1080.0, host.DryCost(TestMaterials.Tile()), 9);
+        }
+
         [Theory]
         [InlineData("materials = test-ablator, test-tile", "materials = ")]
         [InlineData("materials = test-ablator, test-tile", "materials = test-ablator, test-ablator")]

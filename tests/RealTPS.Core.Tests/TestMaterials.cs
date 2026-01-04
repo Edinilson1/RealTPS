@@ -19,6 +19,7 @@ RTPS_MATERIAL
     emissivity = 0.7
     charEmissivity = 0.9
     maxSurfaceTemp = 2500
+    costPerKg = 2
     ABLATION
     {
         resource = RtpsTestAblator

@@ -53,6 +53,9 @@ namespace RealTPS.Core.Materials
         /// <summary>Design thickness of the consumable or insulating layer, m.</summary>
         public double DesignThickness;
 
+        /// <summary>Non-consumable mass per unit protected area (bond, carrier, coating, blanket), kg/m^2.</summary>
+        public double DryArealDensity;
+
         /// <summary>Specific heat of the virgin material, J/(kg K). Informational; mirrors the resource hsp.</summary>
         public double SpecificHeat;
 
@@ -71,6 +74,12 @@ namespace RealTPS.Core.Materials
         /// as a trigger.
         /// </summary>
         public double MaxSurfaceTemp;
+
+        /// <summary>Funds per kilogram of consumable (resource unit cost).</summary>
+        public double CostPerKg;
+
+        /// <summary>Funds per square metre for non-consumable construction.</summary>
+        public double CostPerArea;
 
         public AblationChannel Ablation;
 

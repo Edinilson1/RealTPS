@@ -99,6 +99,21 @@ namespace RealTPS.Core.Hosts
             return material.ConsumableArealDensity * Area;
         }
 
+        /// <summary>
+        /// Construction mass a material adds to (or removes from) the original part mass, kg. Negative when the
+        /// material is lighter than the construction already included in the part.
+        /// </summary>
+        public double DryMass(MaterialDefinition material)
+        {
+            return material.DryArealDensity * Area;
+        }
+
+        /// <summary>Non-consumable construction cost of a material on this host, funds.</summary>
+        public double DryCost(MaterialDefinition material)
+        {
+            return material.CostPerArea * Area;
+        }
+
         private static int CountErrors(List<ValidationIssue> issues)
         {
             int n = 0;

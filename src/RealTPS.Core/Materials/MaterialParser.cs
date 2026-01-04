@@ -83,11 +83,14 @@ namespace RealTPS.Core.Materials
 
             m.Density = Required(node, "density", 1.0, 20000.0, issues, subject, snapshot);
             m.DesignThickness = Required(node, "designThickness", 0.0005, 1.0, issues, subject, snapshot);
+            m.DryArealDensity = Optional(node, "dryArealDensity", 0.0, 0.0, 500.0, issues, subject, snapshot);
             m.SpecificHeat = Required(node, "specificHeat", 100.0, 5000.0, issues, subject, snapshot);
             m.Emissivity = Required(node, "emissivity", 0.01, 1.0, issues, subject, snapshot);
             m.CharEmissivity = Optional(node, "charEmissivity", m.Emissivity, 0.01, 1.0, issues, subject, snapshot);
             m.CharSurfaceFraction = Optional(node, "charSurfaceFraction", 0.05, 0.001, 1.0, issues, subject, snapshot);
             m.MaxSurfaceTemp = Required(node, "maxSurfaceTemp", 400.0, 6000.0, issues, subject, snapshot);
+            m.CostPerKg = Optional(node, "costPerKg", 0.0, 0.0, 1.0e6, issues, subject, snapshot);
+            m.CostPerArea = Optional(node, "costPerArea", 0.0, 0.0, 1.0e7, issues, subject, snapshot);
 
             List<CfgNode> ablationNodes = node.GetNodes("ABLATION");
             List<CfgNode> erosionNodes = node.GetNodes("EROSION");
@@ -131,6 +134,10 @@ namespace RealTPS.Core.Materials
                 if (m.Ablation.OnsetTemp >= m.MaxSurfaceTemp)
                 {
                     Error(issues, subject, "ABLATION.onsetTemp must be below maxSurfaceTemp");
+                }
+                if (!snapshot && m.CostPerKg <= 0.0)
+                {
+                    Warn(issues, subject, "consumable material has no costPerKg");
                 }
             }
         }
