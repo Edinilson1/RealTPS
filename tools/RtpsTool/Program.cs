@@ -61,6 +61,7 @@ namespace RtpsTool
             var files = new Dictionary<string, string>
             {
                 { GeneratedFiles.Resources, PatchGenerator.Resources(repo.Catalogue) },
+                { GeneratedFiles.Unlocks, PatchGenerator.Upgrades(repo.Catalogue, repo.Hosts) },
                 { GeneratedFiles.StockHosts, PatchGenerator.Hosts(repo.Catalogue, repo.Hosts) }
             };
             int stale = 0;

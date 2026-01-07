@@ -36,6 +36,7 @@ namespace RealTPS.Core.Materials
 
         private static readonly Regex IdPattern = new Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$", RegexOptions.CultureInvariant);
         private static readonly Regex ResourcePattern = new Regex("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.CultureInvariant);
+        private static readonly Regex TechNodePattern = new Regex("^[A-Za-z][A-Za-z0-9_.-]*$", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// Parses a catalogue profile. Returns the definition, or null when <paramref name="issues"/> received
@@ -91,6 +92,13 @@ namespace RealTPS.Core.Materials
             m.MaxSurfaceTemp = Required(node, "maxSurfaceTemp", 400.0, 6000.0, issues, subject, snapshot);
             m.CostPerKg = Optional(node, "costPerKg", 0.0, 0.0, 1.0e6, issues, subject, snapshot);
             m.CostPerArea = Optional(node, "costPerArea", 0.0, 0.0, 1.0e7, issues, subject, snapshot);
+            m.UnlockCost = Optional(node, "unlockCost", 0.0, 0.0, 1.0e9, issues, subject, snapshot);
+
+            m.TechNode = (node.GetValue("techNode") ?? string.Empty).Trim();
+            if (m.TechNode.Length > 0 && !TechNodePattern.IsMatch(m.TechNode))
+            {
+                Error(issues, subject, "techNode must be one tech node id");
+            }
 
             List<CfgNode> ablationNodes = node.GetNodes("ABLATION");
             List<CfgNode> erosionNodes = node.GetNodes("EROSION");

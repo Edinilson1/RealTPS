@@ -154,6 +154,50 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EveryUpgradeRequirementHasAMatchingUpgradeAndViceVersa()
+        {
+            MaterialCatalogue catalogue = LoadCatalogue();
+            CfgNode upgrades = CfgParser.Parse(Read(GeneratedFiles.Unlocks));
+            var defined = new Dictionary<string, CfgNode>(StringComparer.Ordinal);
+            foreach (CfgNode node in upgrades.Nodes.Where(n => n.Name.StartsWith("PARTUPGRADE", StringComparison.Ordinal)))
+            {
+                Assert.Contains(":NEEDS[RealTPSRuntime&B9PartSwitch", node.Name);
+                Assert.StartsWith("RTPS_", node.GetValue("name"));
+                Assert.False(string.IsNullOrEmpty(node.GetValue("techRequired")));
+                defined.Add(node.GetValue("name"), node);
+            }
+
+            var required = new HashSet<string>(StringComparer.Ordinal);
+            CfgNode hosts = CfgParser.Parse(Read(GeneratedFiles.StockHosts));
+            foreach (CfgNode patch in hosts.Nodes)
+            {
+                CfgNode switcher = patch.GetNodes("MODULE").Single(m => m.GetValue("name") == "ModuleB9PartSwitch");
+                foreach (CfgNode subtype in switcher.Nodes)
+                {
+                    string upgrade = subtype.GetValue("upgradeRequired");
+                    if (upgrade == null)
+                    {
+                        continue;
+                    }
+                    required.Add(upgrade);
+                    Assert.True(defined.ContainsKey(upgrade), "no PARTUPGRADE for " + upgrade);
+                    // The unlock must exist exactly when the subtype exists.
+                    bool subtypeSpeculative = subtype.Name.Contains("!" + PatchGenerator.NoSpeculativeSwitch);
+                    bool upgradeSpeculative = defined[upgrade].Name.Contains("!" + PatchGenerator.NoSpeculativeSwitch);
+                    Assert.Equal(subtypeSpeculative, upgradeSpeculative);
+                }
+            }
+            Assert.Equal(required.OrderBy(s => s, StringComparer.Ordinal), defined.Keys.OrderBy(s => s, StringComparer.Ordinal));
+
+            // Unassigned materials have no unlock.
+            List<HostDefinition> hostList = LoadHosts(catalogue, new List<ValidationIssue>());
+            foreach (MaterialDefinition m in catalogue.Materials.Where(m => !PatchGenerator.IsAssigned(m, hostList)))
+            {
+                Assert.False(defined.ContainsKey("RTPS_" + m.Id.Replace('-', '_')));
+            }
+        }
+
+        [Fact]
         public void ResourcesAreOneKilogramPerUnitAndDoNotFlow()
         {
             CfgNode root = CfgParser.Parse(Read(GeneratedFiles.Resources));

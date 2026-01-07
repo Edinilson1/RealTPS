@@ -74,6 +74,15 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void OneTechNodeDecidesTheUnlock()
+        {
+            Assert.Equal("hypersonicFlight", TestMaterials.Tile().TechNode);
+            Assert.Equal("RTPS_test_tile", TestMaterials.Tile().UpgradeId);
+            Assert.Equal(string.Empty, TestMaterials.Ablator().TechNode);
+            Assert.Contains("techNode = hypersonicFlight", CfgParser.Write(MaterialWriter.Write(TestMaterials.Tile())));
+        }
+
+        [Fact]
         public void RigidAblativeNeedsAnAblationNode()
         {
             string cfg = TestMaterials.TileCfg.Replace("family = rigid_reusable", "family = rigid_ablative");

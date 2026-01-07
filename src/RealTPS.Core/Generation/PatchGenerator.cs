@@ -39,6 +39,19 @@ namespace RealTPS.Core.Generation
             return "#LOC_RTPS_res_" + resource;
         }
 
+        /// <summary>True when at least one host carries the material.</summary>
+        public static bool IsAssigned(MaterialDefinition m, IList<HostDefinition> hosts)
+        {
+            for (int i = 0; i < hosts.Count; i++)
+            {
+                if (hosts[i].Materials.Contains(m.Id))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary><c>RESOURCE_DEFINITION</c> nodes for every RealTPS-owned consumable resource in the catalogue.</summary>
         public static string Resources(MaterialCatalogue catalogue)
         {
@@ -68,6 +81,33 @@ namespace RealTPS.Core.Generation
                 Line(sb, 2, "isDrainable", "false");
                 Line(sb, 2, "showDrainFX", "false");
                 sb.Append("\t}\n}\n");
+            }
+            return sb.ToString();
+        }
+
+        /// <summary><c>PARTUPGRADE</c> nodes for assigned, unlockable materials, on their stock tech node.</summary>
+        public static string Upgrades(MaterialCatalogue catalogue, IList<HostDefinition> hosts)
+        {
+            var sb = new StringBuilder(Header);
+            sb.Append("//\n// One unlock per assigned material that is not a baseline. Unassigned materials get none.\n");
+            foreach (MaterialDefinition m in catalogue.Materials)
+            {
+                if (m.UpgradeId.Length == 0 || !IsAssigned(m, hosts))
+                {
+                    continue;
+                }
+                string needs = Needs;
+                sb.Append("\nPARTUPGRADE:NEEDS[").Append(needs).Append("]\n{\n");
+                Line(sb, 1, "name", m.UpgradeId);
+                Line(sb, 1, "partIcon", FirstHost(m, hosts));
+                Line(sb, 1, "techRequired", m.TechNode);
+                Line(sb, 1, "entryCost", F(m.UnlockCost));
+                Line(sb, 1, "cost", "0");
+                Line(sb, 1, "title", TagStem(m) + "_title");
+                Line(sb, 1, "basicInfo", "#LOC_RTPS_upgrade_basicinfo");
+                Line(sb, 1, "manufacturer", "#LOC_RTPS_manufacturer");
+                Line(sb, 1, "description", TagStem(m) + "_desc");
+                sb.Append("}\n");
             }
             return sb.ToString();
         }
@@ -155,6 +195,10 @@ namespace RealTPS.Core.Generation
             Line(sb, 3, "descriptionDetail", TagStem(m) + "_detail");
             // The baseline has the highest priority so that tank-less hosts also default to it.
             Line(sb, 3, "defaultSubtypePriority", (index == 0 ? 100 : 50 - index).ToString(CultureInfo.InvariantCulture));
+            if (index > 0 && m.UpgradeId.Length > 0)
+            {
+                Line(sb, 3, "upgradeRequired", m.UpgradeId);
+            }
             Line(sb, 3, "addedMass", F(host.DryMass(m) * 0.001));
             Line(sb, 3, "addedCost", F(host.DryCost(m)));
             Line(sb, 3, "allowSwitchInFlight", "false");
@@ -173,6 +217,32 @@ namespace RealTPS.Core.Generation
             sb.Append("\t\t\t\t}\n\t\t\t\tDATA\n\t\t\t\t{\n");
             Line(sb, 5, "materialId", m.Id);
             sb.Append("\t\t\t\t}\n\t\t\t}\n\t\t}\n");
+        }
+
+        /// <summary>
+        /// The part shown on the unlock: the first host that is always installed (no <c>needs</c>), so the icon
+        /// never names a part of a mod that may be missing; only when no such host offers the material, the first
+        /// host of all.
+        /// </summary>
+        private static string FirstHost(MaterialDefinition m, IList<HostDefinition> hosts)
+        {
+            string any = string.Empty;
+            for (int i = 0; i < hosts.Count; i++)
+            {
+                if (!hosts[i].Materials.Contains(m.Id))
+                {
+                    continue;
+                }
+                if (hosts[i].Needs.Length == 0)
+                {
+                    return hosts[i].PartName;
+                }
+                if (any.Length == 0)
+                {
+                    any = hosts[i].PartName;
+                }
+            }
+            return any;
         }
 
         private static void Line(StringBuilder sb, int depth, string key, string value)

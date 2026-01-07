@@ -143,6 +143,10 @@ namespace RealTPS.Core.Hosts
                     issues.Add(new ValidationIssue(true, subject, "assigned material '" + host.Materials[i] + "' is not a valid catalogue entry"));
                     continue;
                 }
+                if (i == 0 && material.TechNode.Length > 0)
+                {
+                    issues.Add(new ValidationIssue(true, subject, "baseline material '" + material.Id + "' must not require an unlock"));
+                }
                 if (material.HasConsumable && host.ConsumableMass(material) < 0.001)
                 {
                     issues.Add(new ValidationIssue(true, subject, "material '" + material.Id + "' would carry less than 1 g on this host"));

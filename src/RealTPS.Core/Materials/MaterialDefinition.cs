@@ -84,6 +84,16 @@ namespace RealTPS.Core.Materials
         public AblationChannel Ablation;
 
         /// <summary>
+        /// Tech node that unlocks the material in the stock tree; empty means "available with the host".
+        /// Other tech trees replace it through a hand-written patch in TechTree/ (see <c>TechTreeOverrides</c>),
+        /// never here.
+        /// </summary>
+        public string TechNode = string.Empty;
+
+        /// <summary>Career entry cost of the unlock, funds.</summary>
+        public double UnlockCost;
+
+        /// <summary>
         /// True when the material carries a finite inventory: an ablator (cooling sink) or a wear layer that
         /// erosion/oxidation removes without any cooling benefit.
         /// </summary>
@@ -102,6 +112,12 @@ namespace RealTPS.Core.Materials
         public double ConsumableArealDensity
         {
             get { return HasConsumable ? Density * DesignThickness : 0.0; }
+        }
+
+        /// <summary>Name of the unlock upgrade, or empty when the material needs none.</summary>
+        public string UpgradeId
+        {
+            get { return string.IsNullOrEmpty(TechNode) ? string.Empty : "RTPS_" + Id.Replace('-', '_'); }
         }
     }
 }

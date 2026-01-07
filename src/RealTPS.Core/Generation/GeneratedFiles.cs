@@ -11,6 +11,9 @@ namespace RealTPS.Core.Generation
         /// <summary><c>RESOURCE_DEFINITION</c> of each consumable material.</summary>
         public const string Resources = ModFolder + "/Resources/MaterialResources.cfg";
 
+        /// <summary><c>PARTUPGRADE</c> of each unlockable material, on its stock tech node.</summary>
+        public const string Unlocks = ModFolder + "/TechTree/MaterialUnlocks.cfg";
+
         /// <summary>Enrolment patches of the stock host parts.</summary>
         public const string StockHosts = ModFolder + "/Patches/StockHosts.cfg";
     }
