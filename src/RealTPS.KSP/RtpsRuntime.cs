@@ -69,6 +69,7 @@ namespace RealTPS
     public static class RtpsCatalogue
     {
         private static MaterialCatalogue current;
+        private static bool researchGating = true;
         private static bool hooked;
 
         /// <summary>The loaded catalogue. Never null; empty when the game database is not available.</summary>
@@ -84,9 +85,26 @@ namespace RealTPS
             }
         }
 
+        /// <summary>
+        /// <c>RTPS_SETTINGS { researchGatingWhenUpgradesDisabled }</c>: when the "part upgrades" difficulty
+        /// option is off in Career or Science, RealTPS materials still follow tech research. Default true.
+        /// </summary>
+        public static bool ResearchGatingWhenUpgradesDisabled
+        {
+            get
+            {
+                if (current == null)
+                {
+                    Reload();
+                }
+                return researchGating;
+            }
+        }
+
         public static void Reload()
         {
             var nodes = new List<CfgNode>();
+            researchGating = true;
 
             if (GameDatabase.Instance != null)
             {
@@ -96,6 +114,15 @@ namespace RealTPS
                     nodes.Add(ConfigNodeBridge.ToCfg(materials[i]));
                 }
 
+                ConfigNode[] settings = GameDatabase.Instance.GetConfigNodes("RTPS_SETTINGS");
+                for (int i = 0; i < settings.Length; i++)
+                {
+                    bool value;
+                    if (settings[i].HasValue("researchGatingWhenUpgradesDisabled") && bool.TryParse(settings[i].GetValue("researchGatingWhenUpgradesDisabled").Trim(), out value))
+                    {
+                        researchGating = value;
+                    }
+                }
 
                 if (!hooked)
                 {
