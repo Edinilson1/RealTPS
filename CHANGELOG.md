@@ -3,6 +3,27 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.3.0 for KSP 1.12.x
+
+ - 2026-01-10
+
+### Changes since the previous version
+
+* Added: Materials are unlocked through the tech tree, each with a stock part upgrade on its node, an entry cost,
+  its own title and description and the shield's icon: Phenolic-Fiberglass at `survivability`, Avcoat at
+  `landing`, SLA-561V at `advLanding`, Carbon-Phenolic at `heavyLanding`, PICA at `metaMaterials`. Cork-Phenolic
+  needs no unlock.
+* Added: Research still gates the materials when the "part upgrades" difficulty option is off in Career or
+  Science; without that, only Cork-Phenolic would ever be available. `researchGatingWhenUpgradesDisabled = false`
+  in `RTPS_SETTINGS` restores the stock behaviour.
+* Added: Material costs and fixed mass: the consumable is priced per kilogram, and the fixed construction (bond,
+  honeycomb, backing) adds mass and cost per square metre.
+
+### For Modders
+
+* `techNode` and `unlockCost` per material; each unlock is a `PARTUPGRADE` named `RTPS_<id>`. The default material
+  of a part needs no unlock.
+
 ## v0.2.1 for KSP 1.12.x
 
  - 2025-12-19
