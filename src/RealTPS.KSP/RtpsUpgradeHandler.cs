@@ -74,6 +74,12 @@ namespace RealTPS
             return Applies(name) ? TechResearched(name) : inner.IsUnlocked(name);
         }
 
+        // Overridden together with IsUnlocked: the wrapped handler's own IsEnabled calls its own IsUnlocked.
+        public override bool IsEnabled(string name)
+        {
+            return Applies(name) ? TechResearched(name) : inner.IsEnabled(name);
+        }
+
         public override void FillUpgrades()
         {
             inner.FillUpgrades();
