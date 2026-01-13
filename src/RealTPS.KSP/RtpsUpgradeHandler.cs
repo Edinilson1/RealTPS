@@ -161,7 +161,7 @@ namespace RealTPS
     /// decorator (first run, or another mod replaced the handler), it wraps whatever is current. It never
     /// unwraps; with the setting off the decorator simply forwards everything.
     /// </summary>
-    [KSPAddon(KSPAddon.Startup.MainMenu, true)]
+    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public sealed class RtpsUpgradeGate : MonoBehaviour
     {
         public void Awake()
