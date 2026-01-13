@@ -3,6 +3,17 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.3.1 for KSP 1.12.x
+
+ - 2026-01-13
+
+### Changes since the previous version
+
+* Fixed: Research gating answers both questions the game asks about an upgrade: whether it's unlocked and whether
+  it's enabled.
+* Fixed: Research gating is installed again at every scene change, so it keeps working when another mod replaces
+  the game's upgrade handler after RealTPS.
+
 ## v0.3.0 for KSP 1.12.x
 
  - 2026-01-10
