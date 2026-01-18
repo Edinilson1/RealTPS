@@ -24,6 +24,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>Protected area, m^2.</summary>
         public double Area;
 
+        /// <summary>Capabilities the part offers (for example <c>hot_structure</c>).</summary>
+        public List<string> Capabilities = new List<string>();
+
         /// <summary>Material ids in display order; index 0 is the baseline.</summary>
         public List<string> Materials = new List<string>();
 
@@ -72,6 +75,7 @@ namespace RealTPS.Core.Hosts
             {
                 issues.Add(new ValidationIssue(true, subject, "area must be a positive number of square metres"));
             }
+            host.Capabilities = node.GetList("capabilities");
             host.Materials = node.GetList("materials");
             host.CharModuleName = (node.GetValue("charModuleName") ?? string.Empty).Trim();
             node.TryGetDouble("stockAblator", out host.StockAblator);
@@ -131,6 +135,31 @@ namespace RealTPS.Core.Hosts
     /// <summary>Host/material compatibility rules shared by the generator, the validators and the runtime.</summary>
     public static class Compatibility
     {
+        /// <summary>
+        /// Returns null when <paramref name="material"/> may be carried by a host of this class with these
+        /// capabilities, otherwise the reason it may not.
+        /// </summary>
+        public static string Check(MaterialDefinition material, string hostClass, IList<string> hostCapabilities)
+        {
+            if (material == null)
+            {
+                return "unknown material";
+            }
+            if (string.IsNullOrEmpty(hostClass) || !material.PermittedHostClasses.Contains(hostClass))
+            {
+                return "material '" + material.Id + "' does not permit host class '" + hostClass + "'";
+            }
+            for (int i = 0; i < material.RequiredHostCapabilities.Count; i++)
+            {
+                string capability = material.RequiredHostCapabilities[i];
+                if (hostCapabilities == null || !hostCapabilities.Contains(capability))
+                {
+                    return "material '" + material.Id + "' requires host capability '" + capability + "'";
+                }
+            }
+            return null;
+        }
+
         /// <summary>Validates every assignment of a host against the catalogue and the baseline rule.</summary>
         public static void ValidateHost(HostDefinition host, MaterialCatalogue catalogue, List<ValidationIssue> issues)
         {
@@ -142,6 +171,11 @@ namespace RealTPS.Core.Hosts
                 {
                     issues.Add(new ValidationIssue(true, subject, "assigned material '" + host.Materials[i] + "' is not a valid catalogue entry"));
                     continue;
+                }
+                string reason = Check(material, host.HostClass, host.Capabilities);
+                if (reason != null)
+                {
+                    issues.Add(new ValidationIssue(true, subject, reason));
                 }
                 if (i == 0 && material.TechNode.Length > 0)
                 {

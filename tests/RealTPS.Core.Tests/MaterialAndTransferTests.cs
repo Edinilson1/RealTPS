@@ -199,5 +199,35 @@ RTPS_HOST
             Assert.Null(ParseHost(HostCfg.Replace(find, replace), issues));
             Assert.Contains(issues, i => i.IsError);
         }
+
+        [Fact]
+        public void IncompatibleUnknownAndLockedBaselineAssignmentsFail()
+        {
+            MaterialCatalogue catalogue = Catalogue();
+
+            var issues = new List<ValidationIssue>();
+            Compatibility.ValidateHost(ParseHost(HostCfg.Replace("test-ablator, test-tile", "test-ablator, test-carbon-fabric"), issues), catalogue, issues);
+            Assert.Contains(issues, i => i.IsError && i.Message.Contains("does not permit host class"));
+
+            issues = new List<ValidationIssue>();
+            Compatibility.ValidateHost(ParseHost(HostCfg.Replace("test-ablator, test-tile", "test-ablator, nope"), issues), catalogue, issues);
+            Assert.Contains(issues, i => i.IsError && i.Message.Contains("not a valid catalogue entry"));
+
+            issues = new List<ValidationIssue>();
+            Compatibility.ValidateHost(ParseHost(HostCfg.Replace("test-ablator, test-tile", "test-tile, test-ablator"), issues), catalogue, issues);
+            Assert.Contains(issues, i => i.IsError && i.Message.Contains("must not require an unlock"));
+        }
+
+        [Fact]
+        public void CapabilitiesAreRequiredNotAssumed()
+        {
+            MaterialDefinition carbon = TestMaterials.Carbon();
+            Assert.NotNull(Compatibility.Check(carbon, "deployable_rib_fabric", new List<string>()));
+            Assert.NotNull(Compatibility.Check(carbon, "deployable_rib_fabric", null));
+            Assert.Null(Compatibility.Check(carbon, "deployable_rib_fabric", new List<string> { "hot_structure" }));
+            Assert.NotNull(Compatibility.Check(carbon, "rigid_disc", new List<string> { "hot_structure" }));
+            Assert.NotNull(Compatibility.Check(carbon, "", new List<string> { "hot_structure" }));
+            Assert.NotNull(Compatibility.Check(null, "rigid_disc", null));
+        }
     }
 }

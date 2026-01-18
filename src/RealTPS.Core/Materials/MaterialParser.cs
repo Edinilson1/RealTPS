@@ -37,6 +37,7 @@ namespace RealTPS.Core.Materials
         private static readonly Regex IdPattern = new Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$", RegexOptions.CultureInvariant);
         private static readonly Regex ResourcePattern = new Regex("^[A-Za-z][A-Za-z0-9_]*$", RegexOptions.CultureInvariant);
         private static readonly Regex TechNodePattern = new Regex("^[A-Za-z][A-Za-z0-9_.-]*$", RegexOptions.CultureInvariant);
+        private static readonly Regex TokenPattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
 
         /// <summary>
         /// Parses a catalogue profile. Returns the definition, or null when <paramref name="issues"/> received
@@ -81,6 +82,13 @@ namespace RealTPS.Core.Materials
             {
                 Error(issues, subject, "family must be rigid_ablative, rigid_reusable, flexible_insulating or deployable_radiative");
             }
+
+            m.PermittedHostClasses = ReadTokens(node, "permittedHostClasses", issues, subject);
+            if (m.PermittedHostClasses.Count == 0)
+            {
+                Error(issues, subject, "permittedHostClasses must name at least one host class (an empty list is never a wildcard)");
+            }
+            m.RequiredHostCapabilities = ReadTokens(node, "requiredHostCapabilities", issues, subject);
 
             m.Density = Required(node, "density", 1.0, 20000.0, issues, subject, snapshot);
             m.DesignThickness = Required(node, "designThickness", 0.0005, 1.0, issues, subject, snapshot);
@@ -206,6 +214,19 @@ namespace RealTPS.Core.Materials
                     Error(issues, subject, "duplicate key '" + node.Values[i].Key + "'");
                 }
             }
+        }
+
+        private static List<string> ReadTokens(CfgNode node, string key, List<ValidationIssue> issues, string subject)
+        {
+            List<string> list = node.GetList(key);
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == "*" || !TokenPattern.IsMatch(list[i]))
+                {
+                    Error(issues, subject, key + " entry '" + list[i] + "' is not a plain identifier (wildcards are not accepted)");
+                }
+            }
+            return list;
         }
 
         private static double Required(CfgNode node, string key, double min, double max, List<ValidationIssue> issues, string subject, bool snapshot)

@@ -13,6 +13,7 @@ RTPS_MATERIAL
     schemaVersion = 1
     id = test-ablator
     family = rigid_ablative
+    permittedHostClasses = rigid_disc
     density = 500
     designThickness = 0.05
     specificHeat = 1500

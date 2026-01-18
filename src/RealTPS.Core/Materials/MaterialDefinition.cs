@@ -47,6 +47,12 @@ namespace RealTPS.Core.Materials
         public string Description;
         public ConstructionType Family;
 
+        /// <summary>Host classes this material may be assigned to. Never interpreted as a wildcard.</summary>
+        public List<string> PermittedHostClasses = new List<string>();
+
+        /// <summary>Host capabilities this material needs (for example <c>hot_structure</c>).</summary>
+        public List<string> RequiredHostCapabilities = new List<string>();
+
         /// <summary>Virgin bulk density, kg/m^3.</summary>
         public double Density;
 
