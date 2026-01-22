@@ -32,6 +32,7 @@ and a heat shield is no longer just a bar that drains.
 | Avcoat Honeycomb | The Apollo and Orion ablator | Mun returns, interplanetary returns of moderate mass |
 | SLA-561V | A very light Mars-lander ablator | Gentle entries and thin atmospheres |
 | Carbon-Phenolic | A dense carbon composite for the harshest entries | Anything, if you can carry the mass |
+| SIRCA-15 | Light ceramic tiles, small shields only | Light probes coming back from orbit |
 | PICA | A light carbon ablator | Light craft on fast returns |
 
 ## License
