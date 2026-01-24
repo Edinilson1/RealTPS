@@ -34,6 +34,7 @@ and a heat shield is no longer just a bar that drains.
 | Carbon-Phenolic | A dense carbon composite for the harshest entries | Anything, if you can carry the mass |
 | SIRCA-15 | Light ceramic tiles, small shields only | Light probes coming back from orbit |
 | PICA | A light carbon ablator | Light craft on fast returns |
+| HEEET | Woven carbon made for giant-planet entries | Heavy capsules coming back from far away |
 
 ## License
 
