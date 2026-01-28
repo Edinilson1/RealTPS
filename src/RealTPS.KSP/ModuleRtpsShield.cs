@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using RealTPS.Core.Hosts;
 using RealTPS.Core.Materials;
 using RealTPS.Core.Physics;
 using KSP.Localization;
@@ -26,6 +27,9 @@ namespace RealTPS
     public class ModuleRtpsShield : PartModule
     {
         // ----- host description (part config; written by the enrolment patch) -----
+
+        [KSPField] public string hostClass = string.Empty;
+        [KSPField] public string hostCapabilities = string.Empty;
 
         /// <summary>Protected area, m^2.</summary>
         [KSPField] public double tpsArea;
@@ -80,10 +84,12 @@ namespace RealTPS
         {
             Unresolved,
             Active,
+            Inert,
         }
 
         [NonSerialized] private Mode mode = Mode.Unresolved;
         [NonSerialized] private MaterialDefinition material;
+        [NonSerialized] private string inertReason = string.Empty;
         [NonSerialized] private bool started;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
@@ -115,6 +121,12 @@ namespace RealTPS
         public double RemainingThickness
         {
             get { return mode == Mode.Active && material != null && material.HasConsumable ? AblationSolver.EquivalentThickness(material, tpsInventory, tpsArea) : 0.0; }
+        }
+
+        /// <summary>Why the shield is inert; empty otherwise.</summary>
+        public string InertReason
+        {
+            get { return inertReason; }
         }
 
         // ================================================================================================
@@ -178,11 +190,32 @@ namespace RealTPS
             {
                 problem = Localizer.Format("#LOC_RTPS_msg_unknown_material", materialId);
             }
+            else
+            {
+                problem = Compatibility.Check(requested, hostClass, HostCapabilityList());
+            }
 
             tpsPyrolysed = 0.0;
             tpsDepleted = false;
+
+            if (problem != null)
+            {
+                snapshotText = string.Empty;
+                tpsInventory = 0.0;
+                tpsCapacity = 0.0;
+                committedSwitcherMass = 0.0;
+                bool changed = mode != Mode.Inert || inertReason != problem;
+                SetInert(problem);
+                if (changed && !quiet)
+                {
+                    RtpsLog.Error(PartLabel() + ": " + problem);
+                }
+                return;
+            }
+
             material = requested;
             mode = Mode.Active;
+            inertReason = string.Empty;
             CaptureInventoryFromPart();
         }
 
@@ -348,6 +381,8 @@ namespace RealTPS
         {
             switch (mode)
             {
+                case Mode.Inert:
+                    return Localizer.Format("#LOC_RTPS_status_inert", inertReason);
                 case Mode.Unresolved:
                     return Localizer.Format("#LOC_RTPS_status_unresolved");
             }
@@ -374,6 +409,42 @@ namespace RealTPS
         // ================================================================================================
         // Helpers
         // ================================================================================================
+
+        private void SetInert(string reason)
+        {
+            mode = Mode.Inert;
+            material = null;
+            inertReason = reason ?? string.Empty;
+            sinkPowerKw = 0.0;
+        }
+
+        private void WarnOnScreen()
+        {
+            RtpsLog.Error(PartLabel() + ": thermal protection inactive: " + inertReason);
+            if (HighLogic.LoadedSceneIsFlight && part.partInfo != null)
+            {
+                ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_inert", part.partInfo.title, inertReason), 12f, ScreenMessageStyle.UPPER_CENTER);
+            }
+        }
+
+        private List<string> HostCapabilityList()
+        {
+            var list = new List<string>();
+            if (string.IsNullOrEmpty(hostCapabilities))
+            {
+                return list;
+            }
+            string[] parts = hostCapabilities.Split(',');
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string item = parts[i].Trim();
+                if (item.Length > 0)
+                {
+                    list.Add(item);
+                }
+            }
+            return list;
+        }
 
         internal string PartLabel()
         {

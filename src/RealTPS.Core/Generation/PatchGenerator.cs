@@ -160,6 +160,8 @@ namespace RealTPS.Core.Generation
 
             sb.Append("\tMODULE\n\t{\n");
             Line(sb, 2, "name", ModuleName);
+            Line(sb, 2, "hostClass", host.HostClass);
+            Line(sb, 2, "hostCapabilities", string.Join(", ", host.Capabilities.ToArray()));
             Line(sb, 2, "tpsArea", F(host.Area));
             Line(sb, 2, "charModuleName", host.CharModuleName);
             Line(sb, 2, "switcherModuleId", SwitcherModuleId);
