@@ -154,6 +154,7 @@ namespace RealTPS
                     RtpsLog.Warn("catalogue: " + issue);
                 }
             }
+            RtpsLog.Info("catalogue loaded: " + current.Materials.Count + " material profile(s), research gating " + (researchGating ? "on" : "off"));
         }
 
         private static readonly DatabaseHook Hook = new DatabaseHook();

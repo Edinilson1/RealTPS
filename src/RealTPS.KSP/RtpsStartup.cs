@@ -105,6 +105,7 @@ namespace RealTPS
                     }
                 }
             }
+            RtpsLog.Info("startup check: " + hosts + " enrolled host part(s), " + problems.Count + " problem(s)");
         }
 
         private static string CheckHost(AvailablePart available, Part prefab, ModuleRtpsShield module, MaterialCatalogue catalogue)
