@@ -3,6 +3,31 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.4.0 for KSP 1.12.x
+
+ - 2026-02-02
+
+### Changes since the previous version
+
+* Added: SIRCA-15, light ceramic tiles for the two small shields (0.625 m and 1.25 m), at `composites`.
+* Added: HEEET, a woven carbon ablator for the 1.25 m shield and up, at `aerospaceTech`.
+* Added: A material can require something of the part (small tiles, woven panels), so it's only offered where it
+  fits.
+* Added: Startup check. At the main menu, a RealTPS window lists what's wrong: ModuleManager or B9PartSwitch
+  missing, material profiles rejected, an enrolled part set up wrong. It shows up to eight problems; the rest are
+  in KSP.log. RealTPS never repairs a configuration silently.
+* Added: A shield whose material isn't valid for its part is INACTIVE, with the reason in the part menu and an
+  on-screen warning, instead of being silently protected.
+* Added: KSP.log notes how many materials were loaded, whether research gating is on and how many parts are
+  enrolled.
+
+### For Modders
+
+* `permittedHostClasses` and `requiredHostCapabilities` on materials, `hostClass` and `hostCapabilities` on parts.
+  An empty list never means "all", and wildcards aren't accepted.
+* Another mod can enrol its own heat shield with a ModuleManager patch that names the part: remove the stock
+  ablator, add `ModuleRtpsShield` and a B9PartSwitch selector with one subtype per material.
+
 ## v0.3.1 for KSP 1.12.x
 
  - 2026-01-13
