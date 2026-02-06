@@ -238,6 +238,22 @@ namespace RealTPS
 
         private void StartFlight()
         {
+            DisableStockAblators();
+        }
+
+        private void DisableStockAblators()
+        {
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                var stock = part.Modules[i] as ModuleAblator;
+                if (stock != null && (stock.enabled || stock.moduleIsEnabled))
+                {
+                    // moduleIsEnabled alone does not stop ModuleAblator.FixedUpdate from writing conductivity.
+                    stock.enabled = false;
+                    stock.moduleIsEnabled = false;
+                    RtpsLog.Error(PartLabel() + ": a stock ModuleAblator is present on a RealTPS host and was disabled; the part config should remove it");
+                }
+            }
         }
 
         // ================================================================================================

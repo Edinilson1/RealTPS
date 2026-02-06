@@ -115,6 +115,13 @@ namespace RealTPS
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, "tpsArea must be positive");
             }
+            for (int i = 0; i < prefab.Modules.Count; i++)
+            {
+                if (prefab.Modules[i] is ModuleAblator)
+                {
+                    return Localizer.Format("#LOC_RTPS_startup_host", name, "stock ModuleAblator is still present; a RealTPS host must remove it");
+                }
+            }
             MaterialDefinition baseline;
             if (!catalogue.TryGet(module.materialId, out baseline))
             {
