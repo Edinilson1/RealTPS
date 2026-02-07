@@ -3,6 +3,18 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.4.1 for KSP 1.12.x
+
+ - 2026-02-07
+
+### Changes since the previous version
+
+* Fixed: A stock `ModuleAblator` left on an enrolled shield by another mod's patch is switched off completely
+  (disabling the module alone didn't stop it from writing the part's conductivity), and the startup check names
+  the part.
+* Changed: RealTPS applies the stock ablator's conductivity rule itself: a shield keeps its own conductivity while
+  its underside is uncovered, and the low reentry value while something covers it.
+
 ## v0.4.0 for KSP 1.12.x
 
  - 2026-02-02
