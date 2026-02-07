@@ -26,6 +26,8 @@ namespace RealTPS
     /// </summary>
     public class ModuleRtpsShield : PartModule
     {
+        private const int DownFace = 3; // DragCube.DragFace.YN, the face the stock ablator rule tests
+
         // ----- host description (part config; written by the enrolment patch) -----
 
         [KSPField] public string hostClass = string.Empty;
@@ -33,6 +35,8 @@ namespace RealTPS
 
         /// <summary>Protected area, m^2.</summary>
         [KSPField] public double tpsArea;
+
+        [KSPField] public double reentryConductivity = 0.01;
 
         [KSPField] public string charModuleName = string.Empty;
         [KSPField] public float charMax = 0.85f;
@@ -94,6 +98,7 @@ namespace RealTPS
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
         [NonSerialized] private float lastCharScalar = -1f;
+        [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
 
         // ----- public read-only API -----
@@ -256,6 +261,26 @@ namespace RealTPS
             }
         }
 
+        /// <summary>
+        /// The stock ablator rule, as decompiled from <c>ModuleAblator.FixedUpdate</c>: the part keeps its own
+        /// conductivity while its lower face is unoccluded and uses the reentry value otherwise.
+        /// </summary>
+        private void UpdateConductivity()
+        {
+            if (part.DragCubes == null)
+            {
+                return;
+            }
+            float[] occluded = part.DragCubes.AreaOccluded;
+            float[] weighted = part.DragCubes.WeightedArea;
+            if (occluded == null || weighted == null || occluded.Length <= DownFace || weighted.Length <= DownFace)
+            {
+                return;
+            }
+            bool unoccluded = occluded[DownFace] <= 0.1 * weighted[DownFace];
+            part.heatConductivity = unoccluded ? baseConductivity : reentryConductivity;
+        }
+
         // ================================================================================================
         // Physics step (driven by ShieldCoordinator, once per vessel and physics step)
         // ================================================================================================
@@ -271,6 +296,7 @@ namespace RealTPS
         /// <summary>Phase 1: consumption, damage, the sink and the requests of exposed cells. Nothing is submitted.</summary>
         internal void Plan(double dt)
         {
+            UpdateConductivity();
 
             double skinTemp = part.skinTemperature;
 
