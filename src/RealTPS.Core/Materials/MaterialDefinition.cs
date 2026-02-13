@@ -10,6 +10,7 @@ namespace RealTPS.Core.Materials
     public enum ConstructionType
     {
         RigidAblative,
+        RigidReusable,
     }
 
     /// <summary>Consumable channel with an energy sink (pyrolysis / ablation).</summary>

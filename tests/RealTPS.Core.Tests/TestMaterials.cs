@@ -31,6 +31,23 @@ RTPS_MATERIAL
     }
 }";
 
+        public const string TileCfg = @"
+RTPS_MATERIAL
+{
+    schemaVersion = 1
+    id = test-tile
+    family = rigid_reusable
+    permittedHostClasses = rigid_disc
+    density = 144
+    designThickness = 0.06
+    dryArealDensity = 9
+    specificHeat = 1000
+    emissivity = 0.85
+    maxSurfaceTemp = 1750
+    costPerArea = 900
+    techNode = hypersonicFlight
+}";
+
         public static MaterialDefinition Parse(string cfg)
         {
             var issues = new List<ValidationIssue>();
@@ -45,6 +62,11 @@ RTPS_MATERIAL
         public static MaterialDefinition Ablator()
         {
             return Parse(AblatorCfg);
+        }
+
+        public static MaterialDefinition Tile()
+        {
+            return Parse(TileCfg);
         }
     }
 }

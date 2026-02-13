@@ -145,6 +145,10 @@ namespace RealTPS.Core.Materials
             {
                 Error(issues, subject, "rigid_ablative materials need an ABLATION node");
             }
+            if (m.Family != ConstructionType.RigidAblative && m.Ablation != null)
+            {
+                Error(issues, subject, "only rigid_ablative materials may declare an ABLATION node; reusable, flexible and deployable families must not consume material for cooling");
+            }
             if (m.Ablation != null)
             {
                 if (m.Ablation.OnsetTemp >= m.MaxSurfaceTemp)
@@ -278,6 +282,7 @@ namespace RealTPS.Core.Materials
             switch (raw)
             {
                 case "rigid_ablative": family = ConstructionType.RigidAblative; return true;
+                case "rigid_reusable": family = ConstructionType.RigidReusable; return true;
                 default: family = ConstructionType.RigidAblative; return false;
             }
         }

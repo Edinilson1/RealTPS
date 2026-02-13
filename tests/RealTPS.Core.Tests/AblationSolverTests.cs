@@ -153,6 +153,18 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void NonConsumableMaterialNeverConsumesOrCools()
+        {
+            MaterialDefinition m = TestMaterials.Tile();
+            StepInput input = Nominal();
+            input.SkinTemp = 5000.0;
+            input.DynamicPressure = 1.0e9;
+            StepResult r = AblationSolver.Step(m, input);
+            Assert.Equal(0.0, r.ConsumedMass);
+            Assert.Equal(0.0, r.HeatAbsorbed);
+        }
+
+        [Fact]
         public void LongEntryNeverOverdrawsInventory()
         {
             MaterialDefinition m = TestMaterials.Ablator();

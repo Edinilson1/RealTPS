@@ -83,6 +83,15 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void NonAblativeFamiliesMayNotDeclareACoolingSink()
+        {
+            string cfg = TestMaterials.TileCfg.Replace("techNode = hypersonicFlight", "techNode = hypersonicFlight\n    ABLATION { resource = RtpsX\n onsetTemp = 600\n activationTemp = 8000\n rateCoefficient = 1\n heatOfAblation = 1e6 }");
+            List<ValidationIssue> issues;
+            Assert.Null(TryParse(cfg, out issues));
+            Assert.Contains(issues, i => i.Message.Contains("only rigid_ablative"));
+        }
+
+        [Fact]
         public void RigidAblativeNeedsAnAblationNode()
         {
             string cfg = TestMaterials.TileCfg.Replace("family = rigid_reusable", "family = rigid_ablative");
