@@ -36,6 +36,13 @@ and a heat shield is no longer just a bar that drains.
 | PICA | A light carbon ablator | Light craft on fast returns |
 | HEEET | Woven carbon made for giant-planet entries | Heavy capsules coming back from far away |
 
+**Reusable surfaces**: nothing burns; they glow and radiate the heat away.
+
+| Material | What it is | Best for |
+|---|---|---|
+| LI-900 Silica Tile | The Space Shuttle's tiles | Very gentle entries of very light craft |
+| TUFROC | A toughened carbon cap over insulation | Reusable low-orbit returns of light craft on large shields |
+
 ## License
 
 RealTPS is released under the [MIT license](LICENSE). It doesn't contain code, models or configs from any other
