@@ -98,6 +98,7 @@ namespace RealTPS.Core.Materials
             m.CharEmissivity = Optional(node, "charEmissivity", m.Emissivity, 0.01, 1.0, issues, subject, snapshot);
             m.CharSurfaceFraction = Optional(node, "charSurfaceFraction", 0.05, 0.001, 1.0, issues, subject, snapshot);
             m.MaxSurfaceTemp = Required(node, "maxSurfaceTemp", 400.0, 6000.0, issues, subject, snapshot);
+            m.ReuseSurfaceTemp = Optional(node, "reuseSurfaceTemp", 0.0, 0.0, 6000.0, issues, subject, snapshot);
             m.CostPerKg = Optional(node, "costPerKg", 0.0, 0.0, 1.0e6, issues, subject, snapshot);
             m.CostPerArea = Optional(node, "costPerArea", 0.0, 0.0, 1.0e7, issues, subject, snapshot);
             m.UnlockCost = Optional(node, "unlockCost", 0.0, 0.0, 1.0e9, issues, subject, snapshot);
@@ -106,6 +107,11 @@ namespace RealTPS.Core.Materials
             if (m.TechNode.Length > 0 && !TechNodePattern.IsMatch(m.TechNode))
             {
                 Error(issues, subject, "techNode must be one tech node id");
+            }
+
+            if (m.ReuseSurfaceTemp > m.MaxSurfaceTemp)
+            {
+                Error(issues, subject, "reuseSurfaceTemp cannot exceed maxSurfaceTemp");
             }
 
             List<CfgNode> ablationNodes = node.GetNodes("ABLATION");

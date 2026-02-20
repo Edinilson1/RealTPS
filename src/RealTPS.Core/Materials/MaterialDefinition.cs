@@ -82,6 +82,12 @@ namespace RealTPS.Core.Materials
         /// </summary>
         public double MaxSurfaceTemp;
 
+        /// <summary>
+        /// Surface temperature above which a reusable material is no longer reusable, K (0 = not stated).
+        /// Reported once when exceeded; damage is governed by <see cref="DamageSurfaceTemp"/>.
+        /// </summary>
+        public double ReuseSurfaceTemp;
+
         /// <summary>Funds per kilogram of consumable (resource unit cost).</summary>
         public double CostPerKg;
 

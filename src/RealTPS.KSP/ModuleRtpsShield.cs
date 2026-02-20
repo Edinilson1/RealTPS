@@ -62,6 +62,12 @@ namespace RealTPS
         /// <summary>Inventory pyrolysed so far, kg (drives the char emissivity; erosion is not counted).</summary>
         [KSPField(isPersistant = true)] public double tpsPyrolysed;
 
+        /// <summary>Set once when the surface exceeded the material's reuse limit.</summary>
+        [KSPField(isPersistant = true)] public bool reuseLimitExceeded;
+
+        /// <summary>Highest exposed-skin temperature seen while active, K.</summary>
+        [KSPField(isPersistant = true)] public double peakSurfaceTemp;
+
         // ----- read-only contract and display -----
 
         /// <summary>True when no consumable is left anywhere on the face.</summary>
@@ -201,6 +207,8 @@ namespace RealTPS
             }
 
             tpsPyrolysed = 0.0;
+            reuseLimitExceeded = false;
+            peakSurfaceTemp = 0.0;
             tpsDepleted = false;
 
             if (problem != null)
@@ -299,6 +307,10 @@ namespace RealTPS
             UpdateConductivity();
 
             double skinTemp = part.skinTemperature;
+            if (skinTemp > peakSurfaceTemp && !double.IsNaN(skinTemp) && !double.IsInfinity(skinTemp))
+            {
+                peakSurfaceTemp = skinTemp;
+            }
 
             var input = new ShieldStepInput
             {
@@ -327,6 +339,11 @@ namespace RealTPS
                 tpsDepleted = true;
                     ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_depleted", part.partInfo.title), 8f, ScreenMessageStyle.UPPER_CENTER);
                 RtpsLog.Info(PartLabel() + ": thermal protection exhausted at skin " + F(part.skinTemperature) + " K");
+            }
+
+            if (!reuseLimitExceeded && material.ReuseSurfaceTemp > 0.0 && part.skinTemperature > material.ReuseSurfaceTemp)
+            {
+                reuseLimitExceeded = true;
             }
 
         }
@@ -439,6 +456,10 @@ namespace RealTPS
             if (sinkPowerKw > 0.0)
             {
                 return Localizer.Format("#LOC_RTPS_status_ablating");
+            }
+            if (reuseLimitExceeded)
+            {
+                return Localizer.Format("#LOC_RTPS_status_reuse");
             }
             return Localizer.Format("#LOC_RTPS_status_nominal");
         }
