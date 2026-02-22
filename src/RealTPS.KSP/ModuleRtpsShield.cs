@@ -370,7 +370,7 @@ namespace RealTPS
             uiMaterial = DisplayName();
             uiStatus = StatusText();
 
-            bool consumable = active && tpsCapacity > 0.0;
+            bool consumable = active && material.HasConsumable && tpsCapacity > 0.0;
             BaseField remaining = Fields["uiRemaining"];
             if (remaining != null)
             {
