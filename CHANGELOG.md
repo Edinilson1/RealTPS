@@ -3,6 +3,27 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.5.0 for KSP 1.12.x
+
+ - 2026-02-25
+
+### Changes since the previous version
+
+* Added: Reusable surfaces, a kind of protection that isn't consumed: the surface glows, radiates the heat away and
+  insulates what's behind it.
+  - LI-900 Silica Tile (`hypersonicFlight`): superb insulation, a low temperature limit.
+  - TUFROC (`aerospaceTech`): a toughened carbon cap that takes more heat than plain tiles, at a much higher mass
+    and cost.
+* Added: A reuse limit. Going past it marks the shield ("Reuse limit exceeded") and records the peak surface
+  temperature; it does no damage.
+* Changed: The TPS remaining line only shows for materials that are consumed.
+
+### For Modders
+
+* Family `rigid_reusable`: only rigid ablators may declare an `ABLATION` node. New keys `reuseSurfaceTemp`,
+  `maxStructureTemp` (the part's internal limit) and `depletedMaxSurfaceTemp` (the surface limit once the material
+  is gone).
+
 ## v0.4.1 for KSP 1.12.x
 
  - 2026-02-07
