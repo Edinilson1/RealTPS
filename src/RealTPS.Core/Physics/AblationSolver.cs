@@ -20,6 +20,9 @@ namespace RealTPS.Core.Physics
 
         /// <summary>Remaining consumable inventory, kg.</summary>
         public double RemainingMass;
+
+        /// <summary>Free-stream dynamic pressure, Pa.</summary>
+        public double DynamicPressure;
     }
 
     /// <summary>Result of one solver step. Every field is finite and non-negative.</summary>
@@ -28,13 +31,19 @@ namespace RealTPS.Core.Physics
         /// <summary>Inventory pyrolysed with an energy sink, kg.</summary>
         public double PyrolysedMass;
 
+        /// <summary>Inventory removed by shear, kg (no sink).</summary>
+        public double ShearErodedMass;
+
         /// <summary>Energy removed from the skin during the step, J.</summary>
         public double HeatAbsorbed;
+
+        /// <summary>True when the dynamic pressure exceeded the material's shear limit.</summary>
+        public bool ShearOverload;
 
         /// <summary>Total inventory removed, kg.</summary>
         public double ConsumedMass
         {
-            get { return PyrolysedMass; }
+            get { return PyrolysedMass + ShearErodedMass; }
         }
 
         /// <summary>Average sink power over the step, W. Zero for a zero-length step.</summary>
@@ -54,6 +63,9 @@ namespace RealTPS.Core.Physics
     {
         /// <summary>Largest step the rate law is integrated over; longer steps are treated as this long.</summary>
         public const double MaxStep = 1.0;
+
+        /// <summary>Upper bound of the shear overload multiplier, so an absurd pressure cannot strip a shield in one frame.</summary>
+        public const double MaxShearOverload = 10.0;
 
         /// <summary>
         /// Advances the material by one step. The energy bound applies to this sink in isolation: it guarantees
@@ -96,6 +108,22 @@ namespace RealTPS.Core.Physics
                     result.PyrolysedMass = pyrolysed;
                     result.HeatAbsorbed = pyrolysed * ablation.HeatOfAblation;
                     remaining -= pyrolysed;
+                }
+            }
+
+            ErosionChannel erosion = material.Erosion;
+            if (erosion != null && remaining > 0.0)
+            {
+                if (erosion.ShearLimit > 0.0 && IsUsable(input.DynamicPressure) && input.DynamicPressure > erosion.ShearLimit)
+                {
+                    result.ShearOverload = true;
+                    double overload = Math.Min(input.DynamicPressure / erosion.ShearLimit - 1.0, MaxShearOverload);
+                    double sheared = Math.Min(erosion.ShearRate * overload * input.Area * dt, remaining);
+                    if (sheared > 0.0)
+                    {
+                        result.ShearErodedMass = sheared;
+                        remaining -= sheared;
+                    }
                 }
             }
 

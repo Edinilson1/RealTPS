@@ -33,6 +33,28 @@ namespace RealTPS.Core.Materials
 
     }
 
+    /// <summary>Zero-sink mass-loss channels: mechanical removal and oxidation. They never cool the part.</summary>
+    public sealed class ErosionChannel
+    {
+        /// <summary>Resource consumed. For ablators this equals the ablation resource.</summary>
+        public string Resource;
+
+        /// <summary>Dynamic pressure above which char/fabric is mechanically removed, Pa. 0 disables.</summary>
+        public double ShearLimit;
+
+        /// <summary>Areal loss rate at twice the shear limit, kg/(m^2 s).</summary>
+        public double ShearRate;
+
+        /// <summary>Skin temperature above which oxidation proceeds in an oxygen atmosphere, K. 0 disables.</summary>
+        public double OxidationOnsetTemp;
+
+        /// <summary>Arrhenius activation temperature for oxidation, K.</summary>
+        public double OxidationActivationTemp;
+
+        /// <summary>Pre-exponential areal oxidation rate, kg/(m^2 s).</summary>
+        public double OxidationRate;
+    }
+
     /// <summary>
     /// A validated thermal-protection material profile. All quantities are SI. Instances are immutable
     /// after parsing by convention; the solver only reads them.
@@ -95,6 +117,7 @@ namespace RealTPS.Core.Materials
         public double CostPerArea;
 
         public AblationChannel Ablation;
+        public ErosionChannel Erosion;
 
         /// <summary>
         /// Tech node that unlocks the material in the stock tree; empty means "available with the host".
@@ -112,13 +135,13 @@ namespace RealTPS.Core.Materials
         /// </summary>
         public bool HasConsumable
         {
-            get { return Ablation != null; }
+            get { return Ablation != null || Erosion != null; }
         }
 
         /// <summary>Resource holding the consumable inventory, or null.</summary>
         public string ConsumableResource
         {
-            get { return Ablation != null ? Ablation.Resource : null; }
+            get { return Ablation != null ? Ablation.Resource : (Erosion != null ? Erosion.Resource : null); }
         }
 
         /// <summary>Consumable mass per unit protected area, kg/m^2 (0 for non-consumable materials).</summary>

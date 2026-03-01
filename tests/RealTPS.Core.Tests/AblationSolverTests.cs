@@ -153,6 +153,32 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void ShearErosionRemovesMassWithoutCooling()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            StepInput input = Nominal();
+            input.SkinTemp = 500.0;
+            input.DynamicPressure = 100000.0;
+            StepResult r = AblationSolver.Step(m, input);
+            Assert.True(r.ShearOverload);
+            Assert.Equal(0.02 * 1.0 * 1.2 * 0.02, r.ShearErodedMass, 12);
+            Assert.Equal(0.0, r.HeatAbsorbed);
+            Assert.Equal(0.0, r.PyrolysedMass);
+        }
+
+        [Fact]
+        public void ShearOverloadIsCapped()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            StepInput input = Nominal();
+            input.SkinTemp = 500.0;
+            input.DynamicPressure = 1.0e12;
+            input.RemainingMass = 1.0e6;
+            StepResult r = AblationSolver.Step(m, input);
+            Assert.Equal(0.02 * AblationSolver.MaxShearOverload * 1.2 * 0.02, r.ShearErodedMass, 12);
+        }
+
+        [Fact]
         public void NonConsumableMaterialNeverConsumesOrCools()
         {
             MaterialDefinition m = TestMaterials.Tile();

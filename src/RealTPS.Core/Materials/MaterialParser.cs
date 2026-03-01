@@ -124,6 +124,10 @@ namespace RealTPS.Core.Materials
             {
                 m.Ablation = ParseAblation(ablationNodes[0], issues, subject, snapshot);
             }
+            if (erosionNodes.Count == 1)
+            {
+                m.Erosion = ParseErosion(erosionNodes[0], m, issues, subject, snapshot);
+            }
 
             ValidateFamilyRules(m, issues, subject, snapshot);
 
@@ -143,6 +147,46 @@ namespace RealTPS.Core.Materials
             a.RateCoefficient = Required(node, "rateCoefficient", 1.0e-9, 1.0e9, issues, subject + " ABLATION", snapshot);
             a.HeatOfAblation = Required(node, "heatOfAblation", 1.0e4, 5.0e8, issues, subject + " ABLATION", snapshot);
             return a;
+        }
+
+        private static ErosionChannel ParseErosion(CfgNode node, MaterialDefinition m, List<ValidationIssue> issues, string subject, bool snapshot)
+        {
+            var e = new ErosionChannel();
+            e.Resource = (node.GetValue("resource") ?? string.Empty).Trim();
+            if (e.Resource.Length == 0 && m.Ablation != null)
+            {
+                e.Resource = m.Ablation.Resource;
+            }
+            if (!ResourcePattern.IsMatch(e.Resource))
+            {
+                Error(issues, subject, "EROSION.resource must be a resource name (or omitted when an ABLATION node provides one)");
+            }
+            if (m.Ablation != null && e.Resource != m.Ablation.Resource)
+            {
+                Error(issues, subject, "EROSION.resource must equal ABLATION.resource: one material has one consumable inventory");
+            }
+            string es = subject + " EROSION";
+            e.ShearLimit = Optional(node, "shearLimit", 0.0, 0.0, 1.0e8, issues, es, snapshot);
+            e.ShearRate = Optional(node, "shearRate", 0.0, 0.0, 1.0e3, issues, es, snapshot);
+            e.OxidationOnsetTemp = Optional(node, "oxidationOnsetTemp", 0.0, 0.0, 6000.0, issues, es, snapshot);
+            e.OxidationActivationTemp = Optional(node, "oxidationActivationTemp", 0.0, 0.0, 100000.0, issues, es, snapshot);
+            e.OxidationRate = Optional(node, "oxidationRate", 0.0, 0.0, 1.0e9, issues, es, snapshot);
+
+            bool shear = e.ShearLimit > 0.0 || e.ShearRate > 0.0;
+            bool oxidation = e.OxidationOnsetTemp > 0.0 || e.OxidationRate > 0.0 || e.OxidationActivationTemp > 0.0;
+            if (shear && !(e.ShearLimit > 0.0 && e.ShearRate > 0.0))
+            {
+                Error(issues, es, "shearLimit and shearRate must both be positive when shear erosion is used");
+            }
+            if (oxidation && !(e.OxidationOnsetTemp > 0.0 && e.OxidationRate > 0.0 && e.OxidationActivationTemp > 0.0))
+            {
+                Error(issues, es, "oxidationOnsetTemp, oxidationActivationTemp and oxidationRate must all be positive when oxidation is used");
+            }
+            if (!shear && !oxidation)
+            {
+                Error(issues, es, "node declares no erosion mechanism");
+            }
+            return e;
         }
 
         private static void ValidateFamilyRules(MaterialDefinition m, List<ValidationIssue> issues, string subject, bool snapshot)
@@ -166,6 +210,10 @@ namespace RealTPS.Core.Materials
                     Warn(issues, subject, "consumable material has no costPerKg");
                 }
             }
+            if (!snapshot && m.HasConsumable && m.CostPerKg <= 0.0 && m.Ablation == null)
+            {
+                Warn(issues, subject, "wear layer has no costPerKg");
+            }
         }
 
         private static readonly HashSet<string> MaterialKeys = new HashSet<string>(StringComparer.Ordinal)
@@ -182,6 +230,11 @@ namespace RealTPS.Core.Materials
             "resource", "onsetTemp", "activationTemp", "rateCoefficient", "heatOfAblation"
         };
 
+        private static readonly HashSet<string> ErosionKeys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "resource", "shearLimit", "shearRate", "oxidationOnsetTemp", "oxidationActivationTemp", "oxidationRate"
+        };
+
         /// <summary>
         /// A catalogue profile may only contain known keys. A misspelt key must not pass silently: a wrong
         /// spelling of <c>techNode</c>, for example, would make a material free.
@@ -195,6 +248,10 @@ namespace RealTPS.Core.Materials
                 if (child.Name == "ABLATION")
                 {
                     RejectUnknownKeys(child, AblationKeys, issues, subject + " ABLATION");
+                }
+                else if (child.Name == "EROSION")
+                {
+                    RejectUnknownKeys(child, ErosionKeys, issues, subject + " EROSION");
                 }
                 else
                 {

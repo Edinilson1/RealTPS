@@ -29,6 +29,11 @@ RTPS_MATERIAL
         rateCoefficient = 5
         heatOfAblation = 5.0e6
     }
+    EROSION
+    {
+        shearLimit = 50000
+        shearRate = 0.02
+    }
 }";
 
         public const string TileCfg = @"

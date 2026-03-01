@@ -73,6 +73,8 @@ namespace RealTPS
         /// <summary>True when no consumable is left anywhere on the face.</summary>
         [KSPField] public bool tpsDepleted;
 
+        [KSPField] public bool tpsShearOverload;
+
         [KSPField(guiName = "#LOC_RTPS_ui_sink", guiFormat = "F1", guiUnits = " kW")]
         public double sinkPowerKw;
 
@@ -317,6 +319,7 @@ namespace RealTPS
                 Dt = dt,
                 SkinTemp = skinTemp,
                 ExposedSkinHeatCapacity = ShieldCoordinator.ExposedSkinCapacity(part),
+                DynamicPressure = part.dynamicPressurekPa * 1000.0,
             };
             ShieldSolver.Step(material, state, input, result);
 
@@ -452,6 +455,10 @@ namespace RealTPS
             if (tpsDepleted)
             {
                 return Localizer.Format("#LOC_RTPS_status_depleted");
+            }
+            if (tpsShearOverload)
+            {
+                return Localizer.Format("#LOC_RTPS_status_shear");
             }
             if (sinkPowerKw > 0.0)
             {
