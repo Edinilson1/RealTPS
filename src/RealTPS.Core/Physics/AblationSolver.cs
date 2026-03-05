@@ -23,6 +23,9 @@ namespace RealTPS.Core.Physics
 
         /// <summary>Free-stream dynamic pressure, Pa.</summary>
         public double DynamicPressure;
+
+        /// <summary>True when the surrounding atmosphere contains oxygen.</summary>
+        public bool OxygenAtmosphere;
     }
 
     /// <summary>Result of one solver step. Every field is finite and non-negative.</summary>
@@ -34,6 +37,9 @@ namespace RealTPS.Core.Physics
         /// <summary>Inventory removed by shear, kg (no sink).</summary>
         public double ShearErodedMass;
 
+        /// <summary>Inventory removed by oxidation, kg (no sink).</summary>
+        public double OxidisedMass;
+
         /// <summary>Energy removed from the skin during the step, J.</summary>
         public double HeatAbsorbed;
 
@@ -43,7 +49,7 @@ namespace RealTPS.Core.Physics
         /// <summary>Total inventory removed, kg.</summary>
         public double ConsumedMass
         {
-            get { return PyrolysedMass + ShearErodedMass; }
+            get { return PyrolysedMass + ShearErodedMass + OxidisedMass; }
         }
 
         /// <summary>Average sink power over the step, W. Zero for a zero-length step.</summary>
@@ -123,6 +129,16 @@ namespace RealTPS.Core.Physics
                     {
                         result.ShearErodedMass = sheared;
                         remaining -= sheared;
+                    }
+                }
+
+                if (erosion.OxidationOnsetTemp > 0.0 && input.OxygenAtmosphere && input.SkinTemp > erosion.OxidationOnsetTemp && remaining > 0.0)
+                {
+                    double rate = erosion.OxidationRate * Math.Exp(-erosion.OxidationActivationTemp / input.SkinTemp);
+                    double oxidised = Math.Min(rate * input.Area * dt, remaining);
+                    if (oxidised > 0.0 && !double.IsNaN(oxidised))
+                    {
+                        result.OxidisedMass = oxidised;
                     }
                 }
             }

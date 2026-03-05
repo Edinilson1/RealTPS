@@ -36,6 +36,28 @@ RTPS_MATERIAL
     }
 }";
 
+        public const string CarbonCfg = @"
+RTPS_MATERIAL
+{
+    id = test-carbon-fabric
+    family = deployable_radiative
+    permittedHostClasses = deployable_rib_fabric
+    requiredHostCapabilities = hot_structure
+    density = 900
+    designThickness = 0.004
+    specificHeat = 900
+    emissivity = 0.9
+    maxSurfaceTemp = 2400
+    costPerKg = 50
+    EROSION
+    {
+        resource = RtpsTestCarbonCloth
+        oxidationOnsetTemp = 900
+        oxidationActivationTemp = 9000
+        oxidationRate = 3
+    }
+}";
+
         public const string TileCfg = @"
 RTPS_MATERIAL
 {
@@ -67,6 +89,11 @@ RTPS_MATERIAL
         public static MaterialDefinition Ablator()
         {
             return Parse(AblatorCfg);
+        }
+
+        public static MaterialDefinition Carbon()
+        {
+            return Parse(CarbonCfg);
         }
 
         public static MaterialDefinition Tile()

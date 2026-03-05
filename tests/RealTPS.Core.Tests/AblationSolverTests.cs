@@ -179,6 +179,23 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void OxidationNeedsOxygenAndNeverCools()
+        {
+            MaterialDefinition m = TestMaterials.Carbon();
+            StepInput input = Nominal();
+            input.SkinTemp = 2000.0;
+            input.RemainingMass = 4.0;
+
+            StepResult withOxygen = AblationSolver.Step(m, input);
+            Assert.True(withOxygen.OxidisedMass > 0.0);
+            Assert.Equal(0.0, withOxygen.HeatAbsorbed);
+            Assert.Equal(0.0, withOxygen.PyrolysedMass);
+
+            input.OxygenAtmosphere = false;
+            Assert.Equal(0.0, AblationSolver.Step(m, input).ConsumedMass);
+        }
+
+        [Fact]
         public void NonConsumableMaterialNeverConsumesOrCools()
         {
             MaterialDefinition m = TestMaterials.Tile();

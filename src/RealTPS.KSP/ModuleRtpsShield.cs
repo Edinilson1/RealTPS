@@ -108,6 +108,7 @@ namespace RealTPS
         [NonSerialized] private float lastCharScalar = -1f;
         [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
+        [NonSerialized] private bool oxidising;
 
         // ----- public read-only API -----
 
@@ -320,6 +321,7 @@ namespace RealTPS
                 SkinTemp = skinTemp,
                 ExposedSkinHeatCapacity = ShieldCoordinator.ExposedSkinCapacity(part),
                 DynamicPressure = part.dynamicPressurekPa * 1000.0,
+                OxygenAtmosphere = InOxygenAtmosphere(),
             };
             ShieldSolver.Step(material, state, input, result);
 
@@ -330,6 +332,7 @@ namespace RealTPS
                 mirror.amount = tpsInventory;
             }
             sinkPowerKw = dt > 0.0 ? result.HeatAbsorbed * 0.001 / dt : 0.0;
+            oxidising = result.OxidisedMass > 0.0;
         }
 
         /// <summary>Phase 5: surface properties for the engine's next step, flags, notifications.</summary>
@@ -349,6 +352,12 @@ namespace RealTPS
                 reuseLimitExceeded = true;
             }
 
+        }
+
+        private bool InOxygenAtmosphere()
+        {
+            CelestialBody body = vessel.mainBody;
+            return body != null && body.atmosphere && body.atmosphereContainsOxygen && vessel.staticPressurekPa > 0.0;
         }
 
         // ================================================================================================
@@ -463,6 +472,10 @@ namespace RealTPS
             if (sinkPowerKw > 0.0)
             {
                 return Localizer.Format("#LOC_RTPS_status_ablating");
+            }
+            if (oxidising)
+            {
+                return Localizer.Format("#LOC_RTPS_status_oxidising");
             }
             if (reuseLimitExceeded)
             {
