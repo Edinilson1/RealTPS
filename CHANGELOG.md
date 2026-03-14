@@ -3,6 +3,27 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.6.0 for KSP 1.12.x
+
+ - 2026-03-14
+
+### Changes since the previous version
+
+* Added: Erosion, which removes material without cooling the shield:
+  - shear, above a dynamic-pressure limit: Cork-Phenolic 30 kPa, SLA-561V 20 kPa, SIRCA-15 35 kPa, Avcoat 90 kPa,
+    PICA 130 kPa, HEEET 500 kPa; status "Eroding (dynamic pressure too high)";
+  - oxidation when very hot, only in an atmosphere with oxygen (Kerbin, Laythe), going by the same flag the game
+    uses for jet engines; status "Oxidising".
+* Added: Reinforced Carbon-Carbon and UHTC (ZrB2-SiC) join the catalogue, with a thin coating or oxide scale that
+  oxidises away. No stock part fits them yet, so they can't be selected.
+
+### For Modders
+
+* `EROSION` node, with shear and/or oxidation. A material has one consumable inventory: `EROSION.resource` must be
+  the `ABLATION.resource` when both exist.
+* `availabilityStatus = DEFERRED_UNTIL_COMPATIBLE_HOST`: a profile that is loaded and validated but that no part
+  offers.
+
 ## v0.5.0 for KSP 1.12.x
 
  - 2026-02-25
