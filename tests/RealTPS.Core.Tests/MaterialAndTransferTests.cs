@@ -140,6 +140,28 @@ namespace RealTPS.Core.Tests
         }
     }
 
+    public class EmissivityAndLegacyTests
+    {
+        [Fact]
+        public void ShearErosionDoesNotCreateCharEmissivity()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            double capacity = 30.0;
+            double remaining = capacity;
+            double pyrolysed = 0.0;
+            for (int i = 0; i < 20000 && remaining > 0.0; i++)
+            {
+                var input = new StepInput { Dt = 0.02, SkinTemp = 450.0, SkinHeatCapacity = 2.0e5, Area = 1.2, RemainingMass = remaining, DynamicPressure = 400000.0 };
+                StepResult r = AblationSolver.Step(m, input);
+                remaining -= r.ConsumedMass;
+                pyrolysed += r.PyrolysedMass;
+            }
+            Assert.True(remaining < capacity * 0.5, "shear should have stripped material");
+            Assert.Equal(0.0, pyrolysed);
+            Assert.Equal(m.Emissivity, AblationSolver.SurfaceEmissivity(m, pyrolysed / capacity), 12);
+        }
+    }
+
     public class HostTests
     {
         private const string HostCfg = @"

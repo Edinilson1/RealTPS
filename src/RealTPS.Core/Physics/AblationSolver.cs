@@ -149,6 +149,7 @@ namespace RealTPS.Core.Physics
         /// <summary>
         /// Surface emissivity for a given pyrolysed fraction of the design inventory: virgin value blending
         /// linearly to the char value once <see cref="MaterialDefinition.CharSurfaceFraction"/> has pyrolysed.
+        /// Inventory removed by shear or oxidation must not be counted: stripping material makes no char.
         /// </summary>
         public static double SurfaceEmissivity(MaterialDefinition material, double pyrolysedFraction)
         {
