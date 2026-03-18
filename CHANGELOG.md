@@ -3,6 +3,15 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.6.1 for KSP 1.12.x
+
+ - 2026-03-18
+
+### Changes since the previous version
+
+* Fixed: Material stripped by shear or oxidation darkened the surface as if it had charred. Only material that
+  burns (pyrolysis) makes char now.
+
 ## v0.6.0 for KSP 1.12.x
 
  - 2026-03-14
