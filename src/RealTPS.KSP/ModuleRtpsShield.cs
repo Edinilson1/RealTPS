@@ -36,6 +36,11 @@ namespace RealTPS
         /// <summary>Protected area, m^2.</summary>
         [KSPField] public double tpsArea;
 
+        [KSPField] public double thicknessFactor = 1.0;
+
+        /// <summary>True when RealTPS applies the stock occlusion rule to <c>part.heatConductivity</c>.</summary>
+        [KSPField] public bool ownsConductivity = true;
+
         [KSPField] public double reentryConductivity = 0.01;
 
         [KSPField] public string charModuleName = string.Empty;
@@ -278,7 +283,7 @@ namespace RealTPS
         /// </summary>
         private void UpdateConductivity()
         {
-            if (part.DragCubes == null)
+            if (!ownsConductivity || part.DragCubes == null)
             {
                 return;
             }

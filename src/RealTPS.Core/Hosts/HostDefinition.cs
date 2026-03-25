@@ -39,6 +39,18 @@ namespace RealTPS.Core.Hosts
         /// <summary>Name of the char colour module on the part, or empty.</summary>
         public string CharModuleName = string.Empty;
 
+        /// <summary>
+        /// Host design thickness relative to each material's reference thickness (1 = reference). Integral pod
+        /// coatings are thinner than a dedicated shield.
+        /// </summary>
+        public double ThicknessFactor = 1.0;
+
+        /// <summary>
+        /// True when RealTPS applies the stock-style reentry conductivity toggle to <c>part.heatConductivity</c>.
+        /// False when another module on the part already owns that field (Making History pods).
+        /// </summary>
+        public bool OwnsConductivity = true;
+
         /// <summary>Human-readable part title used in generated comments.</summary>
         public string Title = string.Empty;
 
@@ -80,6 +92,11 @@ namespace RealTPS.Core.Hosts
             host.CharModuleName = (node.GetValue("charModuleName") ?? string.Empty).Trim();
             node.TryGetDouble("stockAblator", out host.StockAblator);
             host.Title = (node.GetValue("title") ?? host.PartName).Trim();
+            if (node.HasValue("thicknessFactor") && (!node.TryGetDouble("thicknessFactor", out host.ThicknessFactor) || host.ThicknessFactor < 0.05 || host.ThicknessFactor > 20.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "thicknessFactor must be between 0.05 and 20"));
+            }
+            host.OwnsConductivity = !string.Equals((node.GetValue("ownsConductivity") ?? "true").Trim(), "false", StringComparison.OrdinalIgnoreCase);
             host.ReplacesStockAblator = string.Equals((node.GetValue("replacesStockAblator") ?? "false").Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
             if (host.Materials.Count == 0)
@@ -100,7 +117,7 @@ namespace RealTPS.Core.Hosts
         /// <summary>Consumable inventory of a material on this host, kg.</summary>
         public double ConsumableMass(MaterialDefinition material)
         {
-            return material.ConsumableArealDensity * Area;
+            return material.ConsumableArealDensity * Area * ThicknessFactor;
         }
 
         /// <summary>
