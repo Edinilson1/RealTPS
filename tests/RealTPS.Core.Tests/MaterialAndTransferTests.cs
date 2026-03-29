@@ -205,6 +205,26 @@ RTPS_HOST
         }
 
         [Fact]
+        public void AnUnlockShowsAnAlwaysInstalledPartAndNeedsNoOtherMod()
+        {
+            // The other mod's host comes first in file order (data/hosts is read alphabetically).
+            var issues = new List<ValidationIssue>();
+            string text = UnlockOf(ParseHost(Host("ModShield", "OtherMod"), issues), ParseHost(Host("StockShield", ""), issues));
+            Assert.Contains("partIcon = StockShield", text);
+            Assert.Contains("PARTUPGRADE:NEEDS[RealTPSRuntime&B9PartSwitch]", text);
+        }
+
+        [Fact]
+        public void AnUnlockOfferedOnlyByOtherModsNeedsOneOfThem()
+        {
+            var issues = new List<ValidationIssue>();
+            string text = UnlockOf(ParseHost(Host("ModShield", "OtherMod"), issues), ParseHost(Host("ThirdShield", "ThirdMod"), issues),
+                ParseHost(Host("ModShield2", "OtherMod"), issues));
+            Assert.Contains("partIcon = ModShield", text);
+            Assert.Contains("PARTUPGRADE:NEEDS[RealTPSRuntime&B9PartSwitch&OtherMod|ThirdMod]", text);
+        }
+
+        [Fact]
         public void ValidHostPassesAndComputesMasses()
         {
             var issues = new List<ValidationIssue>();

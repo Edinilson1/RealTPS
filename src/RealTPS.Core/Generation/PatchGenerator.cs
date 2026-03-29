@@ -96,7 +96,8 @@ namespace RealTPS.Core.Generation
                 {
                     continue;
                 }
-                string needs = Needs;
+                string hostNeeds = UnlockNeeds(m, hosts);
+                string needs = Needs + (hostNeeds.Length > 0 ? "&" + hostNeeds : string.Empty);
                 sb.Append("\nPARTUPGRADE:NEEDS[").Append(needs).Append("]\n{\n");
                 Line(sb, 1, "name", m.UpgradeId);
                 Line(sb, 1, "partIcon", FirstHost(m, hosts));
@@ -133,7 +134,7 @@ namespace RealTPS.Core.Generation
                 throw new InvalidOperationException("host '" + host.PartName + "' has an unknown baseline material");
             }
 
-            string needs = Needs;
+            string needs = Needs + (host.Needs.Length > 0 ? "&" + host.Needs : string.Empty);
             sb.Append("\n// ").Append(host.Title).Append(" - ").Append(host.HostClass).Append(", ").Append(F(host.Area)).Append(" m^2\n");
             sb.Append("@PART[").Append(host.PartName).Append("]:NEEDS[").Append(needs).Append("]:FOR[").Append(PassName).Append("]\n{\n");
 
@@ -247,6 +248,33 @@ namespace RealTPS.Core.Generation
                 }
             }
             return any;
+        }
+
+        /// <summary>
+        /// Extra ModuleManager condition of a material's unlock: empty when a host without <c>needs</c> offers the
+        /// material; otherwise the <c>needs</c> of every host that offers it, joined with '|' (any of them), so that
+        /// no unlock appears for a material that no installed part can carry. ModuleManager reads '&amp;' before
+        /// '|', so the join is exact when each such host names a single mod.
+        /// </summary>
+        public static string UnlockNeeds(MaterialDefinition m, IList<HostDefinition> hosts)
+        {
+            var needs = new List<string>();
+            for (int i = 0; i < hosts.Count; i++)
+            {
+                if (!hosts[i].Materials.Contains(m.Id))
+                {
+                    continue;
+                }
+                if (hosts[i].Needs.Length == 0)
+                {
+                    return string.Empty;
+                }
+                if (!needs.Contains(hosts[i].Needs))
+                {
+                    needs.Add(hosts[i].Needs);
+                }
+            }
+            return string.Join("|", needs.ToArray());
         }
 
         private static void Line(StringBuilder sb, int depth, string key, string value)

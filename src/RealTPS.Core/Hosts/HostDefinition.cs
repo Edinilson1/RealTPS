@@ -33,6 +33,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>Stock ablator declared by the original part, kg (0 when it has none). Used for cost correction.</summary>
         public double StockAblator;
 
+        /// <summary>ModuleManager <c>:NEEDS[]</c> condition for parts from DLC or other mods; empty for base-game parts.</summary>
+        public string Needs = string.Empty;
+
         /// <summary>True when the original part has a stock <c>ModuleAblator</c> that the patch must replace.</summary>
         public bool ReplacesStockAblator;
 
@@ -89,6 +92,7 @@ namespace RealTPS.Core.Hosts
             }
             host.Capabilities = node.GetList("capabilities");
             host.Materials = node.GetList("materials");
+            host.Needs = (node.GetValue("needs") ?? string.Empty).Trim();
             host.CharModuleName = (node.GetValue("charModuleName") ?? string.Empty).Trim();
             node.TryGetDouble("stockAblator", out host.StockAblator);
             host.Title = (node.GetValue("title") ?? host.PartName).Trim();
