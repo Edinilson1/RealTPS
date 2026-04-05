@@ -12,7 +12,8 @@ and a heat shield is no longer just a bar that drains.
 
 **License**: [MIT](LICENSE)\
 **KSP version**: 1.12.x\
-**Requires**: [ModuleManager], [B9PartSwitch]
+**Requires**: [ModuleManager], [B9PartSwitch]\
+**Optional**: Making History (adds the 1.875 m shield and the KV pods)
 
 ## Download and installation
 
