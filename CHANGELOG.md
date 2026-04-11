@@ -3,6 +3,22 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.7.0 for KSP 1.12.x
+
+ - 2026-04-11
+
+### Changes since the previous version
+
+* Added: Making History parts: the 1.875 m heat shield, with the same materials as the 2.5 m one, and the KV-1,
+  KV-2 and KV-3 pods, whose built-in heat shields take Cork-Phenolic, Phenolic-Fiberglass or Avcoat. Without the
+  expansion these patches simply don't apply.
+* Added: The pods carry a thinner coating than a dedicated shield (0.65 of the reference thickness) and leave the
+  part's conductivity to the pod's own module.
+
+### For Modders
+
+* Host class `integral_pod`, host fields `thicknessFactor` and `ownsConductivity`.
+
 ## v0.6.1 for KSP 1.12.x
 
  - 2026-03-18
