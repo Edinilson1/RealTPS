@@ -37,6 +37,7 @@ namespace RealTPS
         [KSPField] public double tpsArea;
 
         [KSPField] public double thicknessFactor = 1.0;
+        [KSPField] public double includedDryArealDensity;
 
         /// <summary>True when RealTPS applies the stock occlusion rule to <c>part.heatConductivity</c>.</summary>
         [KSPField] public bool ownsConductivity = true;

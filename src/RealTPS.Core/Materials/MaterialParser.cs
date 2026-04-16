@@ -346,6 +346,8 @@ namespace RealTPS.Core.Materials
             {
                 case "rigid_ablative": family = ConstructionType.RigidAblative; return true;
                 case "rigid_reusable": family = ConstructionType.RigidReusable; return true;
+                case "flexible_insulating": family = ConstructionType.FlexibleInsulating; return true;
+                case "deployable_radiative": family = ConstructionType.DeployableRadiative; return true;
                 default: family = ConstructionType.RigidAblative; return false;
             }
         }

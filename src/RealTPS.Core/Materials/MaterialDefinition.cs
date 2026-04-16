@@ -11,6 +11,8 @@ namespace RealTPS.Core.Materials
     {
         RigidAblative,
         RigidReusable,
+        FlexibleInsulating,
+        DeployableRadiative
     }
 
     /// <summary>Consumable channel with an energy sink (pyrolysis / ablation).</summary>

@@ -165,6 +165,7 @@ namespace RealTPS.Core.Generation
             Line(sb, 2, "hostCapabilities", string.Join(", ", host.Capabilities.ToArray()));
             Line(sb, 2, "tpsArea", F(host.Area));
             Line(sb, 2, "thicknessFactor", F(host.ThicknessFactor));
+            Line(sb, 2, "includedDryArealDensity", F(host.IncludedDryArealDensity));
             Line(sb, 2, "ownsConductivity", host.OwnsConductivity ? "true" : "false");
             Line(sb, 2, "charModuleName", host.CharModuleName);
             Line(sb, 2, "switcherModuleId", SwitcherModuleId);

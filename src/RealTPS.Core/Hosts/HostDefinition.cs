@@ -48,6 +48,9 @@ namespace RealTPS.Core.Hosts
         /// </summary>
         public double ThicknessFactor = 1.0;
 
+        /// <summary>Non-consumable TPS mass per area already included in the original part mass, kg/m^2.</summary>
+        public double IncludedDryArealDensity;
+
         /// <summary>
         /// True when RealTPS applies the stock-style reentry conductivity toggle to <c>part.heatConductivity</c>.
         /// False when another module on the part already owns that field (Making History pods).
@@ -100,6 +103,10 @@ namespace RealTPS.Core.Hosts
             {
                 issues.Add(new ValidationIssue(true, subject, "thicknessFactor must be between 0.05 and 20"));
             }
+            if (node.HasValue("includedDryArealDensity") && (!node.TryGetDouble("includedDryArealDensity", out host.IncludedDryArealDensity) || host.IncludedDryArealDensity < 0.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "includedDryArealDensity must be zero or positive"));
+            }
             host.OwnsConductivity = !string.Equals((node.GetValue("ownsConductivity") ?? "true").Trim(), "false", StringComparison.OrdinalIgnoreCase);
             host.ReplacesStockAblator = string.Equals((node.GetValue("replacesStockAblator") ?? "false").Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
@@ -130,7 +137,7 @@ namespace RealTPS.Core.Hosts
         /// </summary>
         public double DryMass(MaterialDefinition material)
         {
-            return material.DryArealDensity * Area;
+            return (material.DryArealDensity - IncludedDryArealDensity) * Area;
         }
 
         /// <summary>Non-consumable construction cost of a material on this host, funds.</summary>
