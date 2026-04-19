@@ -44,6 +44,13 @@ and a heat shield is no longer just a bar that drains.
 | LI-900 Silica Tile | The Space Shuttle's tiles | Very gentle entries of very light craft |
 | TUFROC | A toughened carbon cap over insulation | Reusable low-orbit returns of light craft on large shields |
 
+**Inflatable heat shield**: light protection spread over a huge area.
+
+| Material | What it is | Best for |
+|---|---|---|
+| Ceramic-Cloth Blanket (Gen 1) | The basic blanket, available from the start | Light payloads from low orbit |
+| Silicon-Carbide Blanket (Gen 2) | A blanket that takes more heat | Low orbit with more margin |
+
 ## License
 
 RealTPS is released under the [MIT license](LICENSE). It doesn't contain code, models or configs from any other
