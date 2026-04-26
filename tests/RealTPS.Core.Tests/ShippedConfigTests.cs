@@ -73,6 +73,16 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EveryFamilyHasAtLeastOneProfile()
+        {
+            MaterialCatalogue catalogue = LoadCatalogue();
+            foreach (ConstructionType family in Enum.GetValues(typeof(ConstructionType)))
+            {
+                Assert.Contains(catalogue.Materials, m => m.Family == family);
+            }
+        }
+
+        [Fact]
         public void GeneratedFilesAreCurrent()
         {
             MaterialCatalogue catalogue = LoadCatalogue();
