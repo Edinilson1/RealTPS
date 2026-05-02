@@ -3,6 +3,23 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.8.0 for KSP 1.12.x
+
+ - 2026-05-02
+
+### Changes since the previous version
+
+* Added: The stock inflatable heat shield, with flexible blankets: the Ceramic-Cloth Blanket (Gen 1), available
+  from the start, and the Silicon-Carbide Blanket (Gen 2, `metaMaterials`). They aren't consumed; they fail by
+  temperature. The part's own mass already includes 4 kg/m² of blanket.
+* Added: The ADEPT Woven Carbon Fabric joins the catalogue, with a wear layer that erodes and oxidises. It waits for
+  a deployable part with ribs.
+
+### For Modders
+
+* Families `flexible_insulating` and `deployable_radiative`, host class `inflatable_blanket`, host field
+  `includedDryArealDensity`.
+
 ## v0.7.0 for KSP 1.12.x
 
  - 2026-04-11
