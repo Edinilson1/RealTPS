@@ -72,6 +72,12 @@ namespace RealTPS.Core.Materials
         public string Description;
         public ConstructionType Family;
 
+        /// <summary>
+        /// True for a theoretical or fictional material (<c>speculative = true</c>). The optional
+        /// <c>GameData/RealTPSNoSpeculative</c> folder removes it, and it cannot be a baseline: it needs a techNode.
+        /// </summary>
+        public bool Speculative;
+
         /// <summary>Host classes this material may be assigned to. Never interpreted as a wildcard.</summary>
         public List<string> PermittedHostClasses = new List<string>();
 

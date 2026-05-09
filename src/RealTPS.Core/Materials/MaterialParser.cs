@@ -214,6 +214,10 @@ namespace RealTPS.Core.Materials
             {
                 Warn(issues, subject, "wear layer has no costPerKg");
             }
+            if (!snapshot && m.Speculative && m.TechNode.Length == 0)
+            {
+                Error(issues, subject, "speculative materials cannot be baseline (they need a techNode unlock)");
+            }
         }
 
         private static readonly HashSet<string> MaterialKeys = new HashSet<string>(StringComparer.Ordinal)

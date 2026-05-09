@@ -22,6 +22,9 @@ and a heat shield is no longer just a bar that drains.
 3. Make sure ModuleManager and B9PartSwitch are installed. Without them RealTPS does nothing, and a message tells
    you why.
 
+Don't want the two speculative materials (the fictional intumescent composite and the theoretical Gen 3 blanket)?
+Create an empty folder called `GameData/RealTPSNoSpeculative` and they're gone.
+
 ## Materials
 
 **Ablators**: they burn away and take the heat with them.
@@ -36,6 +39,7 @@ and a heat shield is no longer just a bar that drains.
 | SIRCA-15 | Light ceramic tiles, small shields only | Light probes coming back from orbit |
 | PICA | A light carbon ablator | Light craft on fast returns |
 | HEEET | Woven carbon made for giant-planet entries | Heavy capsules coming back from far away |
+| Intumescent Composite *(fictional)* | A coating that swells into an insulating foam | Feather-light low-orbit protection |
 
 **Reusable surfaces**: nothing burns; they glow and radiate the heat away.
 
@@ -50,6 +54,7 @@ and a heat shield is no longer just a bar that drains.
 |---|---|---|
 | Ceramic-Cloth Blanket (Gen 1) | The basic blanket, available from the start | Light payloads from low orbit |
 | Silicon-Carbide Blanket (Gen 2) | A blanket that takes more heat | Low orbit with more margin |
+| Advanced Aerogel Blanket (Gen 3) *(theoretical)* | A projected blanket that has never flown | Low orbit with the most margin |
 
 ## License
 

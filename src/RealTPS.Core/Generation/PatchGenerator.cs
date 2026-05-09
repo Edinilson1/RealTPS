@@ -19,6 +19,9 @@ namespace RealTPS.Core.Generation
         /// <summary>ModuleManager pass name of RealTPS's own patches.</summary>
         public const string PassName = "RealTPS";
 
+        /// <summary>Creating a GameData folder with this name removes speculative materials from every host.</summary>
+        public const string NoSpeculativeSwitch = "RealTPSNoSpeculative";
+
         public const string ModuleName = "ModuleRtpsShield";
         public const string SwitcherModuleId = "rtpsMaterial";
         public const string Needs = RuntimeAssembly + "&B9PartSwitch";
@@ -97,7 +100,7 @@ namespace RealTPS.Core.Generation
                     continue;
                 }
                 string hostNeeds = UnlockNeeds(m, hosts);
-                string needs = Needs + (hostNeeds.Length > 0 ? "&" + hostNeeds : string.Empty);
+                string needs = Needs + (hostNeeds.Length > 0 ? "&" + hostNeeds : string.Empty) + (m.Speculative ? "&!" + NoSpeculativeSwitch : string.Empty);
                 sb.Append("\nPARTUPGRADE:NEEDS[").Append(needs).Append("]\n{\n");
                 Line(sb, 1, "name", m.UpgradeId);
                 Line(sb, 1, "partIcon", FirstHost(m, hosts));
@@ -194,7 +197,7 @@ namespace RealTPS.Core.Generation
 
         private static void AppendSubtype(StringBuilder sb, HostDefinition host, MaterialDefinition m, int index)
         {
-            sb.Append("\t\tSUBTYPE\n\t\t{\n");
+            sb.Append(m.Speculative ? "\t\tSUBTYPE:NEEDS[!" + NoSpeculativeSwitch + "]\n\t\t{\n" : "\t\tSUBTYPE\n\t\t{\n");
             Line(sb, 3, "name", m.Id);
             Line(sb, 3, "title", TagStem(m) + "_title");
             Line(sb, 3, "descriptionSummary", TagStem(m) + "_desc");
