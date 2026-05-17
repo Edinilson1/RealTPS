@@ -13,7 +13,7 @@ and a heat shield is no longer just a bar that drains.
 **License**: [MIT](LICENSE)\
 **KSP version**: 1.12.x\
 **Requires**: [ModuleManager], [B9PartSwitch]\
-**Optional**: Making History (adds the 1.875 m shield and the KV pods)
+**Optional**: [Community Tech Tree], Making History (adds the 1.875 m shield and the KV pods)
 
 ## Download and installation
 
@@ -63,3 +63,4 @@ mod.
 
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
+[Community Tech Tree]: https://github.com/post-kerbin-mining-corporation/CommunityTechTree
