@@ -3,6 +3,26 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.9.0 for KSP 1.12.x
+
+ - 2026-05-28
+
+### Changes since the previous version
+
+* Added: Two speculative materials for late in the tech tree, both at `experimentalScience`: the fictional
+  Intumescent Composite, a coating that swells into an insulating foam (the swelling itself isn't simulated), and
+  the theoretical Advanced Aerogel Blanket (Gen 3) for the inflatable shield. An empty
+  `GameData/RealTPSNoSpeculative` folder removes them.
+* Added: Every material states its basis (historical, flight-proven, experimental, theoretical or fictional), shown
+  in its detail line.
+* Added: Community Tech Tree support: with it installed, Phenolic-Fiberglass unlocks at `enhancedSurvivability`,
+  HEEET and the Gen 3 blanket at `aerospaceComposites`, and the Intumescent Composite at `advAerospaceEngineering`.
+
+### For Modders
+
+* `realismTier`. Theoretical and fictional materials are speculative: their subtypes and unlocks carry
+  `NEEDS[!RealTPSNoSpeculative]`, and they can't be a part's default material.
+
 ## v0.8.0 for KSP 1.12.x
 
  - 2026-05-02
