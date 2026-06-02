@@ -66,6 +66,12 @@ namespace RealTPS.Core.Materials
         /// <summary>Schema written by this build, and assumed for a catalogue profile that states none.</summary>
         public const int CurrentSchemaVersion = 1;
 
+        /// <summary>True when this build can read a profile of that schema version.</summary>
+        public static bool IsSupportedSchema(int version)
+        {
+            return version == 1;
+        }
+
         public int SchemaVersion = CurrentSchemaVersion;
         public string Id;
         public string DisplayName;

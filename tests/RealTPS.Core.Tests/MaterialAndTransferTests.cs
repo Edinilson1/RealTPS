@@ -74,6 +74,23 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void SchemaVersionIsOptionalAndMeansTheInstalledSchema()
+        {
+            // Stated: read as exactly that version.
+            Assert.Contains("schemaVersion = 1", TestMaterials.AblatorCfg);
+            Assert.Equal(1, TestMaterials.Ablator().SchemaVersion);
+
+            // Omitted: the schema of the installed build.
+            Assert.DoesNotContain("schemaVersion", TestMaterials.CarbonCfg);
+            Assert.Equal(MaterialDefinition.CurrentSchemaVersion, TestMaterials.Carbon().SchemaVersion);
+            Assert.Equal(MaterialDefinition.CurrentSchemaVersion, TestMaterials.Parse(TestMaterials.AblatorCfg.Replace("schemaVersion = 1", string.Empty)).SchemaVersion);
+
+            // A snapshot always records the version it was written with.
+            Assert.Contains("schemaVersion = " + MaterialDefinition.CurrentSchemaVersion, CfgParser.Write(MaterialWriter.Write(TestMaterials.Carbon())));
+            Assert.Equal(1, MaterialDefinition.CurrentSchemaVersion);
+        }
+
+        [Fact]
         public void OneTechNodeDecidesTheUnlock()
         {
             Assert.Equal("hypersonicFlight", TestMaterials.Tile().TechNode);
@@ -97,6 +114,24 @@ namespace RealTPS.Core.Tests
             string cfg = TestMaterials.TileCfg.Replace("family = rigid_reusable", "family = rigid_ablative");
             List<ValidationIssue> issues;
             Assert.Null(TryParse(cfg, out issues));
+        }
+
+        [Fact]
+        public void SnapshotRoundTripsEveryField()
+        {
+            foreach (MaterialDefinition original in new[] { TestMaterials.Ablator(), TestMaterials.Carbon(), TestMaterials.Tile() })
+            {
+                string text = CfgParser.Write(MaterialWriter.Write(original));
+                var issues = new List<ValidationIssue>();
+                MaterialDefinition copy = MaterialParser.Parse(CfgParser.Parse(text).Nodes[0], issues);
+                Assert.NotNull(copy);
+                Assert.Equal(CfgParser.Write(MaterialWriter.Write(original)), CfgParser.Write(MaterialWriter.Write(copy)));
+                Assert.Equal(original.Id, copy.Id);
+                Assert.Equal(original.Family, copy.Family);
+                Assert.Equal(original.MaxSurfaceTemp, copy.MaxSurfaceTemp);
+                Assert.Equal(original.ConsumableResource, copy.ConsumableResource);
+                Assert.Equal(original.PermittedHostClasses, copy.PermittedHostClasses);
+            }
         }
 
         [Fact]

@@ -105,6 +105,23 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void ShippedProfilesOmitTheSchemaVersionAndTheStockUpgradesUseTheProfileNode()
+        {
+            foreach (string file in Directory.GetFiles(Path.Combine(GameData, "Materials"), "*.cfg"))
+            {
+                Assert.DoesNotContain("schemaVersion", File.ReadAllText(file));
+            }
+            MaterialCatalogue catalogue = LoadCatalogue();
+            CfgNode upgrades = CfgParser.Parse(Read(GeneratedFiles.Unlocks));
+            foreach (CfgNode node in upgrades.Nodes)
+            {
+                Assert.StartsWith("PARTUPGRADE", node.Name);
+                MaterialDefinition m = catalogue.Materials.Single(x => x.UpgradeId == node.GetValue("name"));
+                Assert.Equal(m.TechNode, node.GetValue("techRequired"));
+            }
+        }
+
+        [Fact]
         public void HostPatchesEnrolNamedPartsOnlyAndNeedThePluginAndB9()
         {
             CfgNode root = CfgParser.Parse(Read(GeneratedFiles.StockHosts));

@@ -39,6 +39,18 @@ namespace RealTPS.Core.Materials
         private static readonly Regex TechNodePattern = new Regex("^[A-Za-z][A-Za-z0-9_.-]*$", RegexOptions.CultureInvariant);
         private static readonly Regex TokenPattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
 
+        /// <summary>Outcome of reading a profile snapshot stored in a save.</summary>
+        public enum SnapshotStatus
+        {
+            Ok,
+
+            /// <summary>The snapshot is malformed or numerically unsafe.</summary>
+            Invalid,
+
+            /// <summary>Written by a newer RealTPS than this one; must not be replaced by another material.</summary>
+            UnsupportedVersion
+        }
+
         /// <summary>
         /// Parses a catalogue profile. Returns the definition, or null when <paramref name="issues"/> received
         /// at least one error.
@@ -46,6 +58,39 @@ namespace RealTPS.Core.Materials
         public static MaterialDefinition Parse(CfgNode node, List<ValidationIssue> issues)
         {
             return ParseCore(node, issues, false);
+        }
+
+        /// <summary>
+        /// Reads a profile snapshot persisted in a save. Snapshots are held to numerical-safety rules only
+        /// (finite, correctly signed values, consistent channels), not to the catalogue admission ranges, so a
+        /// profile that was legal when it was committed - including the synthetic legacy profile - stays
+        /// readable. Older schema versions are migrated here; a newer version is reported, never guessed.
+        /// </summary>
+        public static SnapshotStatus ParseSnapshot(CfgNode node, List<ValidationIssue> issues, out MaterialDefinition material)
+        {
+            material = null;
+            if (node == null)
+            {
+                throw new ArgumentNullException(nameof(node));
+            }
+            if (issues == null)
+            {
+                throw new ArgumentNullException(nameof(issues));
+            }
+            double schema;
+            if (!node.TryGetDouble("schemaVersion", out schema) || schema < 1.0 || schema != Math.Floor(schema))
+            {
+                issues.Add(new ValidationIssue(true, "snapshot", "missing or malformed schemaVersion"));
+                return SnapshotStatus.Invalid;
+            }
+            if (schema > MaterialDefinition.CurrentSchemaVersion)
+            {
+                issues.Add(new ValidationIssue(true, "snapshot", "schemaVersion " + Format(schema) + " is newer than this build (" + MaterialDefinition.CurrentSchemaVersion + ")"));
+                return SnapshotStatus.UnsupportedVersion;
+            }
+            // Schema migrations go here, oldest first, each rewriting the node to the next version.
+            material = ParseCore(node, issues, true);
+            return material != null ? SnapshotStatus.Ok : SnapshotStatus.Invalid;
         }
 
         private static MaterialDefinition ParseCore(CfgNode node, List<ValidationIssue> issues, bool snapshot)
@@ -63,6 +108,27 @@ namespace RealTPS.Core.Materials
             string subject = "material '" + id + "'";
             int before = CountErrors(issues);
             var m = new MaterialDefinition();
+
+            double schema;
+            if (snapshot)
+            {
+                // Checked and migrated by ParseSnapshot.
+            }
+            else if (!node.HasValue("schemaVersion"))
+            {
+                // Not stated: the profile is written for the schema of the installed build.
+                m.SchemaVersion = MaterialDefinition.CurrentSchemaVersion;
+            }
+            else if (!node.TryGetDouble("schemaVersion", out schema) || schema != Math.Floor(schema)
+                || schema < 1.0 || schema > int.MaxValue || !MaterialDefinition.IsSupportedSchema((int)schema))
+            {
+                // Stated: the profile is read as exactly that version, or not at all.
+                Error(issues, subject, "unsupported schemaVersion '" + node.GetValue("schemaVersion") + "' (this build reads " + MaterialDefinition.CurrentSchemaVersion + "; omit the key to use the installed schema)");
+            }
+            else
+            {
+                m.SchemaVersion = (int)schema;
+            }
 
             if (!IdPattern.IsMatch(id))
             {
@@ -353,6 +419,17 @@ namespace RealTPS.Core.Materials
                 case "flexible_insulating": family = ConstructionType.FlexibleInsulating; return true;
                 case "deployable_radiative": family = ConstructionType.DeployableRadiative; return true;
                 default: family = ConstructionType.RigidAblative; return false;
+            }
+        }
+
+        public static string FamilyToken(ConstructionType family)
+        {
+            switch (family)
+            {
+                case ConstructionType.RigidAblative: return "rigid_ablative";
+                case ConstructionType.RigidReusable: return "rigid_reusable";
+                case ConstructionType.FlexibleInsulating: return "flexible_insulating";
+                default: return "deployable_radiative";
             }
         }
 
