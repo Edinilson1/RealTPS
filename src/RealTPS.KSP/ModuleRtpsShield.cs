@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using RealTPS.Core.Cfg;
 using RealTPS.Core.Hosts;
 using RealTPS.Core.Materials;
 using RealTPS.Core.Physics;
@@ -26,6 +27,10 @@ namespace RealTPS
     /// </summary>
     public class ModuleRtpsShield : PartModule
     {
+        /// <summary>Persisted state layout version.</summary>
+        public const int StateVersion = 1;
+
+        private const string SnapshotNodeName = "RTPS_SNAPSHOT";
         private const int DownFace = 3; // DragCube.DragFace.YN, the face the stock ablator rule tests
 
         // ----- host description (part config; written by the enrolment patch) -----
@@ -59,6 +64,12 @@ namespace RealTPS
 
         // ----- persisted state -----
 
+        /// <summary>0 = this part has never been committed by RealTPS.</summary>
+        [KSPField(isPersistant = true)] public int rtpsStateVersion;
+
+        /// <summary>The material this shield is built from. In flight it never changes.</summary>
+        [KSPField(isPersistant = true)] public string committedMaterialId = string.Empty;
+
         /// <summary>Remaining consumable inventory, kg: the sum of the cells. The resource mirrors it.</summary>
         [KSPField(isPersistant = true)] public double tpsInventory;
 
@@ -73,6 +84,8 @@ namespace RealTPS
 
         /// <summary>Highest exposed-skin temperature seen while active, K.</summary>
         [KSPField(isPersistant = true)] public double peakSurfaceTemp;
+
+        [SerializeField] private string snapshotText = string.Empty;
 
         // ----- read-only contract and display -----
 
@@ -153,6 +166,46 @@ namespace RealTPS
         // Persistence
         // ================================================================================================
 
+        public override void OnLoad(ConfigNode node)
+        {
+            base.OnLoad(node);
+
+            ConfigNode holder = node.GetNode(SnapshotNodeName);
+            if (holder != null && holder.nodes.Count > 0)
+            {
+                try
+                {
+                    snapshotText = CfgParser.Write(ConfigNodeBridge.ToCfg(holder.nodes[0]));
+                }
+                catch (Exception e)
+                {
+                    snapshotText = string.Empty;
+                    RtpsLog.Error("stored material profile could not be read: " + e.Message);
+                }
+            }
+        }
+
+        public override void OnSave(ConfigNode node)
+        {
+            base.OnSave(node);
+
+            if (!string.IsNullOrEmpty(snapshotText))
+            {
+                try
+                {
+                    CfgNode parsed = CfgParser.Parse(snapshotText);
+                    if (parsed.Nodes.Count > 0)
+                    {
+                        node.AddNode(SnapshotNodeName).AddNode(ConfigNodeBridge.ToConfigNode(parsed.Nodes[0]));
+                    }
+                }
+                catch (Exception e)
+                {
+                    RtpsLog.Error("material profile could not be saved: " + e.Message);
+                }
+            }
+        }
+
         // ================================================================================================
         // Lifecycle
         // ================================================================================================
@@ -215,10 +268,12 @@ namespace RealTPS
                 problem = Compatibility.Check(requested, hostClass, HostCapabilityList());
             }
 
+            rtpsStateVersion = StateVersion;
             tpsPyrolysed = 0.0;
             reuseLimitExceeded = false;
             peakSurfaceTemp = 0.0;
             tpsDepleted = false;
+            committedMaterialId = materialId ?? string.Empty;
 
             if (problem != null)
             {
@@ -238,6 +293,7 @@ namespace RealTPS
             material = requested;
             mode = Mode.Active;
             inertReason = string.Empty;
+            snapshotText = CfgParser.Write(MaterialWriter.Write(requested));
             CaptureInventoryFromPart();
         }
 
@@ -261,6 +317,55 @@ namespace RealTPS
         private void StartFlight()
         {
             DisableStockAblators();
+
+            if (!ResolveFlightProfile(switcher))
+            {
+                return;
+            }
+        }
+
+        /// <summary>Decides which profile this shield flies with. Returns false when the shield stays without one.</summary>
+        private bool ResolveFlightProfile(B9SwitcherProxy switcher)
+        {
+            if (rtpsStateVersion > 0)
+            {
+                if (string.IsNullOrEmpty(snapshotText))
+                {
+                    SetInert(Localizer.Format("#LOC_RTPS_msg_no_profile", committedMaterialId));
+                    WarnOnScreen();
+                    return false;
+                }
+
+                var issues = new List<ValidationIssue>();
+                MaterialDefinition parsed = null;
+                MaterialParser.SnapshotStatus status;
+                try
+                {
+                    CfgNode root = CfgParser.Parse(snapshotText);
+                    status = root.Nodes.Count > 0 ? MaterialParser.ParseSnapshot(root.Nodes[0], issues, out parsed) : MaterialParser.SnapshotStatus.Invalid;
+                }
+                catch (Exception e)
+                {
+                    status = MaterialParser.SnapshotStatus.Invalid;
+                    issues.Add(new ValidationIssue(true, "snapshot", e.Message));
+                }
+
+                if (status != MaterialParser.SnapshotStatus.Ok || parsed == null)
+                {
+                    for (int i = 0; i < issues.Count; i++)
+                    {
+                        RtpsLog.Error(PartLabel() + ": stored profile: " + issues[i]);
+                    }
+                    SetInert(Localizer.Format(status == MaterialParser.SnapshotStatus.UnsupportedVersion ? "#LOC_RTPS_msg_profile_newer" : "#LOC_RTPS_msg_profile_invalid", committedMaterialId));
+                    WarnOnScreen();
+                    return false;
+                }
+
+                material = parsed;
+                mode = Mode.Active;
+                inertReason = string.Empty;
+                return true;
+            }
         }
 
         private void DisableStockAblators()
@@ -439,7 +544,7 @@ namespace RealTPS
         {
             MaterialDefinition listed;
             string name;
-            if (RtpsCatalogue.Current.TryGet(materialId, out listed) && !string.IsNullOrEmpty(listed.DisplayName))
+            if (RtpsCatalogue.Current.TryGet(committedMaterialId, out listed) && !string.IsNullOrEmpty(listed.DisplayName))
             {
                 name = Localizer.Format(listed.DisplayName);
             }
@@ -449,7 +554,7 @@ namespace RealTPS
             }
             else
             {
-                name = materialId;
+                name = string.IsNullOrEmpty(committedMaterialId) ? materialId : committedMaterialId;
             }
             return name;
         }
