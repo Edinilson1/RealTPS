@@ -80,4 +80,59 @@ namespace RealTPS.Core.Materials
             return value.ToString("R", CultureInfo.InvariantCulture);
         }
     }
+
+    /// <summary>
+    /// Builds the profile used for a vessel that was launched before RealTPS was installed and still carries the
+    /// stock generic <c>Ablator</c>. It reproduces the stock rate (<c>0.1 * exp(-7500 / T) * maxAmount</c>
+    /// per second) and sink (2.4 MJ/kg) with the part's original surface properties. It is not identical to
+    /// stock: RealTPS's per-step energy bound applies and the rate is expressed per protected area. It states no
+    /// conductivity and no bond limit, so it has no layer model and takes no damage.
+    /// </summary>
+    public static class LegacyProfile
+    {
+        public const string Id = "legacy-stock-ablator";
+        public const string Resource = "Ablator";
+        public const string HostClass = "legacy_host";
+
+        public const double StockLossConst = 0.1;
+        public const double StockLossExp = 7500.0;
+        public const double StockThreshold = 500.0;
+
+        /// <param name="area">Protected area of the host, m^2.</param>
+        /// <param name="legacyCapacity">Stock ablator capacity of the legacy part, kg.</param>
+        /// <param name="emissivity">The part's original emissive constant.</param>
+        /// <param name="maxSurfaceTemp">The part's original skin temperature limit, K.</param>
+        public static MaterialDefinition Create(double area, double legacyCapacity, double emissivity, double maxSurfaceTemp)
+        {
+            if (!(area > 0.0) || !(legacyCapacity > 0.0) || double.IsInfinity(area) || double.IsInfinity(legacyCapacity))
+            {
+                throw new ArgumentException("area and legacyCapacity must be positive and finite");
+            }
+            double eps = emissivity > 0.0 && emissivity <= 1.0 ? emissivity : 0.4;
+            double limit = maxSurfaceTemp > StockThreshold ? maxSurfaceTemp : 2000.0;
+
+            var m = new MaterialDefinition
+            {
+                Id = Id,
+                DisplayName = Id,
+                Family = ConstructionType.RigidAblative,
+                Density = 1000.0,
+                DesignThickness = legacyCapacity / (1000.0 * area),
+                SpecificHeat = 400.0,
+                Emissivity = eps,
+                CharEmissivity = eps,
+                MaxSurfaceTemp = limit,
+                Ablation = new AblationChannel
+                {
+                    Resource = Resource,
+                    OnsetTemp = StockThreshold,
+                    ActivationTemp = StockLossExp,
+                    RateCoefficient = StockLossConst * legacyCapacity / area,
+                    HeatOfAblation = InventoryTransfer.StockHeatOfAblation
+                }
+            };
+            m.PermittedHostClasses.Add(HostClass);
+            return m;
+        }
+    }
 }

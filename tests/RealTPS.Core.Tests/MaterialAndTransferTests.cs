@@ -195,6 +195,79 @@ namespace RealTPS.Core.Tests
             Assert.Equal(0.0, pyrolysed);
             Assert.Equal(m.Emissivity, AblationSolver.SurfaceEmissivity(m, pyrolysed / capacity), 12);
         }
+
+        [Fact]
+        public void LegacyProfileReproducesStockRateAndSink()
+        {
+            double area = 1.27;
+            double capacity = 200.0;
+            MaterialDefinition legacy = LegacyProfile.Create(area, capacity, 0.4, 3300.0);
+            double skin = 1900.0;
+            var input = new StepInput { Dt = 0.02, SkinTemp = skin, SkinHeatCapacity = 1.0e9, Area = area, RemainingMass = 150.0 };
+            StepResult r = AblationSolver.Step(legacy, input);
+
+            double stockUnitsPerSecond = 0.1 * Math.Exp(-7500.0 / skin) * capacity;
+            Assert.Equal(stockUnitsPerSecond * 0.02, r.PyrolysedMass, 10);
+            Assert.Equal(stockUnitsPerSecond * 0.02 * 2.4e6, r.HeatAbsorbed, 4);
+            Assert.Equal(0.4, AblationSolver.SurfaceEmissivity(legacy, 0.9), 12);
+            // No conductivity and no bond limit: the legacy profile has no layer model and takes no damage.
+            Assert.False(legacy.HasLayerModel);
+            Assert.Equal(0.0, legacy.BondLimitTemp);
+            Assert.Equal(3300.0, legacy.MaxSurfaceTemp);
+            Assert.Equal("Ablator", legacy.ConsumableResource);
+
+            input.SkinTemp = 500.0;
+            Assert.Equal(0.0, AblationSolver.Step(legacy, input).ConsumedMass);
+            Assert.Throws<ArgumentException>(() => LegacyProfile.Create(0.0, 200.0, 0.4, 3300.0));
+            Assert.Throws<ArgumentException>(() => LegacyProfile.Create(1.0, double.NaN, 0.4, 3300.0));
+        }
+    }
+
+    public class InventoryTransferTests
+    {
+        [Theory]
+        [InlineData(200.0, 200.0, 36.6, 6.0e6, 36.6)]   // full legacy shield -> full, capped by capacity
+        [InlineData(100.0, 200.0, 36.6, 6.0e6, 18.3)]   // half full stays half full
+        [InlineData(10.0, 200.0, 36.6, 6.0e6, 1.83)]    // fraction is the binding limit
+        [InlineData(10.0, 200.0, 36.6, 30.0e6, 0.8)]    // energy equivalence is the binding limit
+        [InlineData(0.0, 200.0, 36.6, 6.0e6, 0.0)]      // empty stays empty
+        [InlineData(500.0, 200.0, 36.6, 6.0e6, 36.6)]   // over-full legacy cannot exceed capacity
+        public void LegacyConversionNeverAddsProtection(double amount, double capacity, double newCapacity, double newH, double expected)
+        {
+            double result = InventoryTransfer.ConvertLegacy(amount, capacity, InventoryTransfer.StockHeatOfAblation, newCapacity, newH);
+            Assert.Equal(expected, result, 9);
+            Assert.True(result <= newCapacity);
+            Assert.True(result * newH <= Math.Max(amount, 0.0) * InventoryTransfer.StockHeatOfAblation + 1e-6);
+            Assert.True(result / newCapacity <= Math.Min(1.0, amount / capacity) + 1e-12);
+        }
+
+        [Theory]
+        [InlineData(double.NaN, 200.0, 36.6)]
+        [InlineData(100.0, 0.0, 36.6)]
+        [InlineData(100.0, 200.0, double.PositiveInfinity)]
+        [InlineData(-5.0, 200.0, 36.6)]
+        public void LegacyConversionRejectsInvalidInput(double amount, double capacity, double newCapacity)
+        {
+            Assert.Equal(0.0, InventoryTransfer.ConvertLegacy(amount, capacity, 2.4e6, newCapacity, 6.0e6));
+        }
+
+        [Fact]
+        public void LegacyConversionWithoutSinkUsesFractionOnly()
+        {
+            Assert.Equal(5.0, InventoryTransfer.ConvertLegacy(100.0, 200.0, 2.4e6, 10.0, 0.0), 12);
+        }
+
+        [Theory]
+        [InlineData(0.5, 40.0, 40.0, 20.0)]
+        [InlineData(0.5, 40.0, 5.0, 5.0)]     // never more than is present
+        [InlineData(1.7, 40.0, 100.0, 40.0)]
+        [InlineData(-0.2, 40.0, 40.0, 0.0)]
+        [InlineData(double.NaN, 40.0, 40.0, 0.0)]
+        [InlineData(0.5, 0.0, 40.0, 0.0)]
+        public void CarriedFractionNeverExceedsWhatIsPresent(double fraction, double capacity, double current, double expected)
+        {
+            Assert.Equal(expected, InventoryTransfer.CarryFraction(fraction, capacity, current), 12);
+        }
     }
 
     public class HostTests

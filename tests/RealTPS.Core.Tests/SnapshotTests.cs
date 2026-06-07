@@ -17,6 +17,31 @@ namespace RealTPS.Core.Tests
             return MaterialParser.ParseSnapshot(CfgParser.Parse(text).Nodes[0], new List<ValidationIssue>(), out copy);
         }
 
+        [Theory]
+        [InlineData(1.0, 0.1)]        // thinner than any catalogue profile may be
+        [InlineData(1.27, 200.0)]     // stock 1.25 m shield
+        [InlineData(2.449, 20.0)]     // Making History pod
+        [InlineData(1000.0, 0.001)]
+        [InlineData(0.001, 100000.0)]
+        public void LegacyProfileSnapshotRoundTripsOutsideCatalogueRanges(double area, double capacity)
+        {
+            MaterialDefinition legacy = LegacyProfile.Create(area, capacity, 0.4, 3300.0);
+            MaterialDefinition copy;
+            Assert.Equal(MaterialParser.SnapshotStatus.Ok, Read(legacy, out copy));
+            Assert.Equal(legacy.Ablation.RateCoefficient, copy.Ablation.RateCoefficient);
+            Assert.Equal(legacy.Ablation.HeatOfAblation, copy.Ablation.HeatOfAblation);
+            Assert.Equal(legacy.DesignThickness, copy.DesignThickness);
+            Assert.Equal("Ablator", copy.ConsumableResource);
+            Assert.Equal(CfgParser.Write(MaterialWriter.Write(legacy)), CfgParser.Write(MaterialWriter.Write(copy)));
+
+            // The same node is not admissible as a catalogue entry when it leaves the catalogue ranges.
+            if (legacy.DesignThickness < 0.0005 || legacy.DesignThickness > 1.0)
+            {
+                var issues = new List<ValidationIssue>();
+                Assert.Null(MaterialParser.Parse(MaterialWriter.Write(legacy), issues));
+            }
+        }
+
         [Fact]
         public void CatalogueProfilesRoundTripAsSnapshots()
         {
