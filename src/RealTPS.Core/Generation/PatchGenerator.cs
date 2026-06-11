@@ -170,6 +170,7 @@ namespace RealTPS.Core.Generation
             Line(sb, 2, "thicknessFactor", F(host.ThicknessFactor));
             Line(sb, 2, "includedDryArealDensity", F(host.IncludedDryArealDensity));
             Line(sb, 2, "ownsConductivity", host.OwnsConductivity ? "true" : "false");
+            Line(sb, 2, "legacyAblatorCapacity", F(host.ReplacesStockAblator ? host.StockAblator : 0.0));
             Line(sb, 2, "charModuleName", host.CharModuleName);
             Line(sb, 2, "switcherModuleId", SwitcherModuleId);
             Line(sb, 2, "materialId", baseline.Id);

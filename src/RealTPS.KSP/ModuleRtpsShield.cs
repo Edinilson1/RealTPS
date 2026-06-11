@@ -30,7 +30,11 @@ namespace RealTPS
         /// <summary>Persisted state layout version.</summary>
         public const int StateVersion = 1;
 
+        /// <summary>Marker id of a pre-RealTPS host in flight that had no stock ablator; RealTPS leaves it untouched.</summary>
+        public const string LegacyUntreatedId = "legacy-untreated";
+
         private const string SnapshotNodeName = "RTPS_SNAPSHOT";
+        private const string StockAblatorResource = "Ablator";
         private const int DownFace = 3; // DragCube.DragFace.YN, the face the stock ablator rule tests
 
         // ----- host description (part config; written by the enrolment patch) -----
@@ -48,6 +52,9 @@ namespace RealTPS
         [KSPField] public bool ownsConductivity = true;
 
         [KSPField] public double reentryConductivity = 0.01;
+
+        /// <summary>Stock ablator capacity of the original part, kg; 0 when it had none.</summary>
+        [KSPField] public double legacyAblatorCapacity;
 
         [KSPField] public string charModuleName = string.Empty;
         [KSPField] public float charMax = 0.85f;
@@ -78,6 +85,9 @@ namespace RealTPS
 
         /// <summary>Inventory pyrolysed so far, kg (drives the char emissivity; erosion is not counted).</summary>
         [KSPField(isPersistant = true)] public double tpsPyrolysed;
+
+        /// <summary>True for a pre-RealTPS vessel that keeps its stock <c>Ablator</c> at the stock rate.</summary>
+        [KSPField(isPersistant = true)] public bool legacyMode;
 
         /// <summary>Set once when the surface exceeded the material's reuse limit.</summary>
         [KSPField(isPersistant = true)] public bool reuseLimitExceeded;
@@ -116,6 +126,7 @@ namespace RealTPS
             Unresolved,
             Active,
             Inert,
+            LegacyUntreated
         }
 
         [NonSerialized] private Mode mode = Mode.Unresolved;
@@ -125,6 +136,9 @@ namespace RealTPS
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
         [NonSerialized] private float lastCharScalar = -1f;
+        [NonSerialized] private bool baseCaptured;
+        [NonSerialized] private double baseEmissive;
+        [NonSerialized] private double baseSkinMaxTemp;
         [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
         [NonSerialized] private bool oxidising;
@@ -214,6 +228,7 @@ namespace RealTPS
         {
             base.OnStart(startState);
             started = true;
+            CaptureBaseProperties();
             if (!string.IsNullOrEmpty(charModuleName))
             {
                 charModule = part.Modules.GetScalarModule(charModuleName);
@@ -247,6 +262,10 @@ namespace RealTPS
         private void StartEditor()
         {
             CommitRequested(false);
+            if (ConvertLegacyCraftInventory())
+            {
+                CaptureInventoryFromPart();
+            }
         }
 
         /// <summary>
@@ -269,6 +288,7 @@ namespace RealTPS
             }
 
             rtpsStateVersion = StateVersion;
+            legacyMode = false;
             tpsPyrolysed = 0.0;
             reuseLimitExceeded = false;
             peakSurfaceTemp = 0.0;
@@ -312,6 +332,31 @@ namespace RealTPS
             }
         }
 
+        /// <summary>
+        /// A craft saved before RealTPS still lists the stock <c>Ablator</c>. Convert it once to the selected
+        /// material (never more than the same fill fraction or the same sink energy) and drop the stock resource.
+        /// </summary>
+        private bool ConvertLegacyCraftInventory()
+        {
+            PartResource legacy = part.Resources.Get(StockAblatorResource);
+            if (legacy == null || !(legacyAblatorCapacity > 0.0))
+            {
+                return false;
+            }
+            if (mode == Mode.Active && material != null && material.HasConsumable && material.ConsumableResource != StockAblatorResource)
+            {
+                PartResource target = part.Resources.Get(material.ConsumableResource);
+                if (target != null)
+                {
+                    double sink = material.Ablation != null ? material.Ablation.HeatOfAblation : 0.0;
+                    target.amount = InventoryTransfer.ConvertLegacy(legacy.amount, legacy.maxAmount, InventoryTransfer.StockHeatOfAblation, target.maxAmount, sink);
+                    RtpsLog.Info(PartLabel() + ": legacy craft inventory " + F(legacy.amount) + "/" + F(legacy.maxAmount) + " Ablator converted to " + F(target.amount) + "/" + F(target.maxAmount) + " " + target.resourceName);
+                }
+            }
+            part.Resources.Remove(legacy);
+            return true;
+        }
+
         // ----- flight -----
 
         private void StartFlight()
@@ -329,6 +374,11 @@ namespace RealTPS
         {
             if (rtpsStateVersion > 0)
             {
+                if (committedMaterialId == LegacyUntreatedId)
+                {
+                    SetUntreated();
+                    return false;
+                }
                 if (string.IsNullOrEmpty(snapshotText))
                 {
                     SetInert(Localizer.Format("#LOC_RTPS_msg_no_profile", committedMaterialId));
@@ -366,6 +416,38 @@ namespace RealTPS
                 inertReason = string.Empty;
                 return true;
             }
+
+            // No RealTPS state on this part.
+            PartResource legacy = part.Resources.Get(StockAblatorResource);
+            if (legacy != null && legacy.maxAmount > 0.0 && tpsArea > 0.0)
+            {
+                // A vessel launched before RealTPS: keep its stock ablator at the stock rate.
+                material = LegacyProfile.Create(tpsArea, legacy.maxAmount, baseEmissive, baseSkinMaxTemp);
+                mode = Mode.Active;
+                inertReason = string.Empty;
+                legacyMode = true;
+                rtpsStateVersion = StateVersion;
+                committedMaterialId = material.Id;
+                snapshotText = CfgParser.Write(MaterialWriter.Write(material));
+                tpsCapacity = legacy.maxAmount;
+                tpsInventory = Math.Max(0.0, Math.Min(legacy.amount, legacy.maxAmount));
+                tpsPyrolysed = tpsCapacity - tpsInventory;
+                committedSwitcherMass = 0.0;
+                RtpsLog.Info(PartLabel() + ": pre-RealTPS vessel, legacy stock-rate mode with " + F(tpsInventory) + "/" + F(tpsCapacity) + " Ablator");
+                return true;
+            }
+
+            if (!(legacyAblatorCapacity > 0.0) && vessel != null && vessel.situation != Vessel.Situations.PRELAUNCH)
+            {
+                // A host that never had a stock ablator, already in flight without RealTPS state: a pre-RealTPS
+                // vessel cannot be told apart from a spawned one here. Leave the part exactly as stock.
+                rtpsStateVersion = StateVersion;
+                committedMaterialId = LegacyUntreatedId;
+                snapshotText = string.Empty;
+                SetUntreated();
+                RtpsLog.Info(PartLabel() + ": pre-RealTPS host without stock ablator; left with its stock thermal properties");
+                return false;
+            }
         }
 
         private void DisableStockAblators()
@@ -381,6 +463,19 @@ namespace RealTPS
                     RtpsLog.Error(PartLabel() + ": a stock ModuleAblator is present on a RealTPS host and was disabled; the part config should remove it");
                 }
             }
+        }
+
+        private void CaptureBaseProperties()
+        {
+            if (baseCaptured)
+            {
+                return;
+            }
+            Part source = part.partInfo != null && part.partInfo.partPrefab != null ? part.partInfo.partPrefab : part;
+            baseEmissive = source.emissiveConstant;
+            baseSkinMaxTemp = source.skinMaxTemp > 0.0 ? source.skinMaxTemp : source.maxTemp;
+            baseConductivity = source.heatConductivity;
+            baseCaptured = true;
         }
 
         /// <summary>
@@ -542,6 +637,14 @@ namespace RealTPS
 
         private string DisplayName()
         {
+            if (mode == Mode.LegacyUntreated)
+            {
+                return Localizer.Format("#LOC_RTPS_status_untreated");
+            }
+            if (legacyMode)
+            {
+                return Localizer.Format("#LOC_RTPS_status_legacy");
+            }
             MaterialDefinition listed;
             string name;
             if (RtpsCatalogue.Current.TryGet(committedMaterialId, out listed) && !string.IsNullOrEmpty(listed.DisplayName))
@@ -565,6 +668,8 @@ namespace RealTPS
             {
                 case Mode.Inert:
                     return Localizer.Format("#LOC_RTPS_status_inert", inertReason);
+                case Mode.LegacyUntreated:
+                    return Localizer.Format("#LOC_RTPS_status_stock");
                 case Mode.Unresolved:
                     return Localizer.Format("#LOC_RTPS_status_unresolved");
             }
@@ -609,6 +714,14 @@ namespace RealTPS
             mode = Mode.Inert;
             material = null;
             inertReason = reason ?? string.Empty;
+            sinkPowerKw = 0.0;
+        }
+
+        private void SetUntreated()
+        {
+            mode = Mode.LegacyUntreated;
+            material = null;
+            inertReason = string.Empty;
             sinkPowerKw = 0.0;
         }
 
