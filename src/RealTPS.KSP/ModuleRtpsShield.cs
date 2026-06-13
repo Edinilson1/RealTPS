@@ -133,6 +133,7 @@ namespace RealTPS
         [NonSerialized] private MaterialDefinition material;
         [NonSerialized] private string inertReason = string.Empty;
         [NonSerialized] private bool started;
+        [NonSerialized] private bool reconciling;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
         [NonSerialized] private float lastCharScalar = -1f;
@@ -362,11 +363,14 @@ namespace RealTPS
         private void StartFlight()
         {
             DisableStockAblators();
+            B9SwitcherProxy switcher = B9SwitcherProxy.Find(part, switcherModuleId);
 
             if (!ResolveFlightProfile(switcher))
             {
                 return;
             }
+
+            Reconcile(switcher);
         }
 
         /// <summary>Decides which profile this shield flies with. Returns false when the shield stays without one.</summary>
@@ -447,6 +451,83 @@ namespace RealTPS
                 SetUntreated();
                 RtpsLog.Info(PartLabel() + ": pre-RealTPS host without stock ablator; left with its stock thermal properties");
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Brings the part in line with the committed profile after B9PartSwitch has activated whatever
+        /// subtype it chose: re-selects the committed subtype when it still exists, otherwise runs detached.
+        /// Then restores capacity and amount from the cells and computes the mass correction.
+        /// </summary>
+        private void Reconcile(B9SwitcherProxy switcher)
+        {
+            bool attached = false;
+            if (switcher != null && !legacyMode)
+            {
+                string current = switcher.CurrentSubtypeName;
+                if (string.Equals(current, committedMaterialId, StringComparison.Ordinal))
+                {
+                    attached = true;
+                }
+                else if (switcher.HasSubtype(committedMaterialId))
+                {
+                    reconciling = true;
+                    try
+                    {
+                        attached = switcher.SwitchSubtype(committedMaterialId);
+                    }
+                    finally
+                    {
+                        reconciling = false;
+                    }
+                    RtpsLog.Warn(PartLabel() + ": switcher selected '" + current + "' but the shield is built from '" + committedMaterialId + "'; " + (attached ? "re-selected the committed material" : "running detached"));
+                    if (attached)
+                    {
+                        ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_restored", part.partInfo.title, DisplayName()), 8f, ScreenMessageStyle.UPPER_CENTER);
+                    }
+                }
+                else
+                {
+                    RtpsLog.Warn(PartLabel() + ": material '" + committedMaterialId + "' is no longer offered by this part; keeping the committed profile (detached)");
+                }
+            }
+
+            tpsDetached = !attached;
+            string resourceName = material.ConsumableResource;
+
+            if (tpsDetached && switcher != null)
+            {
+                // Remove whatever the switcher created for the subtype it chose; it is not this shield.
+                for (int i = part.Resources.Count - 1; i >= 0; i--)
+                {
+                    PartResource candidate = part.Resources[i];
+                    if (candidate.resourceName != resourceName && switcher.IsManagedResource(candidate.resourceName))
+                    {
+                        part.Resources.Remove(candidate);
+                    }
+                }
+            }
+
+            mirror = null;
+            if (resourceName != null)
+            {
+                mirror = part.Resources.Get(resourceName);
+                if (mirror == null)
+                {
+                    if (PartResourceLibrary.Instance != null && PartResourceLibrary.Instance.GetDefinition(resourceName) != null)
+                    {
+                        var node = new ConfigNode("RESOURCE");
+                        node.AddValue("name", resourceName);
+                        node.AddValue("amount", tpsInventory.ToString("R", CultureInfo.InvariantCulture));
+                        node.AddValue("maxAmount", tpsCapacity.ToString("R", CultureInfo.InvariantCulture));
+                        mirror = part.AddResource(node);
+                    }
+                }
+                if (mirror != null)
+                {
+                    mirror.maxAmount = tpsCapacity;
+                    mirror.amount = tpsInventory;
+                }
             }
         }
 
@@ -658,6 +739,10 @@ namespace RealTPS
             else
             {
                 name = string.IsNullOrEmpty(committedMaterialId) ? materialId : committedMaterialId;
+            }
+            if (tpsDetached && HighLogic.LoadedSceneIsFlight && mode == Mode.Active)
+            {
+                name += " " + Localizer.Format("#LOC_RTPS_ui_detached");
             }
             return name;
         }

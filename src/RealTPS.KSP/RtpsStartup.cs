@@ -144,6 +144,10 @@ namespace RealTPS
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, reason);
             }
+            if (AssemblyLoaded("B9PartSwitch") && B9SwitcherProxy.Find(prefab, module.switcherModuleId) == null)
+            {
+                return Localizer.Format("#LOC_RTPS_startup_host", name, "no ModuleB9PartSwitch with moduleID '" + module.switcherModuleId + "'");
+            }
             return null;
         }
 
