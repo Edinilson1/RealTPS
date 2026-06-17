@@ -25,7 +25,7 @@ namespace RealTPS
     /// The physics step itself is driven by <see cref="ShieldCoordinator"/>, once per vessel, so that every
     /// thermal transaction of a step is planned before any is submitted.
     /// </summary>
-    public class ModuleRtpsShield : PartModule
+    public class ModuleRtpsShield : PartModule, IPartMassModifier
     {
         /// <summary>Persisted state layout version.</summary>
         public const int StateVersion = 1;
@@ -86,6 +86,9 @@ namespace RealTPS
         /// <summary>Inventory pyrolysed so far, kg (drives the char emissivity; erosion is not counted).</summary>
         [KSPField(isPersistant = true)] public double tpsPyrolysed;
 
+        /// <summary>Dry mass contributed by the B9 switcher when the material was committed, t.</summary>
+        [KSPField(isPersistant = true)] public double committedSwitcherMass;
+
         /// <summary>True for a pre-RealTPS vessel that keeps its stock <c>Ablator</c> at the stock rate.</summary>
         [KSPField(isPersistant = true)] public bool legacyMode;
 
@@ -134,6 +137,8 @@ namespace RealTPS
         [NonSerialized] private string inertReason = string.Empty;
         [NonSerialized] private bool started;
         [NonSerialized] private bool reconciling;
+        [NonSerialized] private bool resourceMissing;
+        [NonSerialized] private double massDelta;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
         [NonSerialized] private float lastCharScalar = -1f;
@@ -326,11 +331,19 @@ namespace RealTPS
                 tpsCapacity = resource.maxAmount;
                 tpsInventory = Math.Min(resource.amount, resource.maxAmount);
             }
+            else if (material != null && material.HasConsumable)
+            {
+                // No resource on the part (missing definition): fall back to the host design inventory.
+                tpsCapacity = material.ConsumableArealDensity * tpsArea * thicknessFactor;
+                tpsInventory = tpsCapacity;
+            }
             else
             {
                 tpsCapacity = 0.0;
                 tpsInventory = 0.0;
             }
+            B9SwitcherProxy switcher = B9SwitcherProxy.Find(part, switcherModuleId);
+            committedSwitcherMass = switcher != null ? switcher.DryMass : 0.0;
         }
 
         /// <summary>
@@ -509,6 +522,7 @@ namespace RealTPS
             }
 
             mirror = null;
+            resourceMissing = false;
             if (resourceName != null)
             {
                 mirror = part.Resources.Get(resourceName);
@@ -522,12 +536,26 @@ namespace RealTPS
                         node.AddValue("maxAmount", tpsCapacity.ToString("R", CultureInfo.InvariantCulture));
                         mirror = part.AddResource(node);
                     }
+                    else
+                    {
+                        // The resource definition is gone. Keep solving on the cells and carry their mass
+                        // through IPartMassModifier; never substitute another resource.
+                        resourceMissing = true;
+                        RtpsLog.Warn(PartLabel() + ": resource '" + resourceName + "' is not defined any more; inventory kept by RealTPS as part mass");
+                    }
                 }
                 if (mirror != null)
                 {
                     mirror.maxAmount = tpsCapacity;
                     mirror.amount = tpsInventory;
                 }
+            }
+
+            double currentSwitcherMass = switcher != null ? switcher.DryMass : 0.0;
+            massDelta = committedSwitcherMass - currentSwitcherMass;
+            if (double.IsNaN(massDelta) || double.IsInfinity(massDelta))
+            {
+                massDelta = 0.0;
             }
         }
 
@@ -645,6 +673,33 @@ namespace RealTPS
         {
             CelestialBody body = vessel.mainBody;
             return body != null && body.atmosphere && body.atmosphereContainsOxygen && vessel.staticPressurekPa > 0.0;
+        }
+
+        // ================================================================================================
+        // Mass
+        // ================================================================================================
+
+        /// <summary>
+        /// RealTPS adds mass only in flight, and only to keep a committed shield unchanged: the difference between
+        /// the switcher mass at commit and now, plus the inventory when its resource definition is gone.
+        /// </summary>
+        public float GetModuleMass(float defaultMass, ModifierStagingSituation sit)
+        {
+            if (!HighLogic.LoadedSceneIsFlight || mode != Mode.Active)
+            {
+                return 0f;
+            }
+            double extra = massDelta;
+            if (resourceMissing)
+            {
+                extra += tpsInventory * 0.001;
+            }
+            return (float)extra;
+        }
+
+        public ModifierChangeWhen GetModuleMassChangeWhen()
+        {
+            return ModifierChangeWhen.FIXED;
         }
 
         // ================================================================================================
