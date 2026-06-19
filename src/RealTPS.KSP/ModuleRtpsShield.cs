@@ -27,11 +27,17 @@ namespace RealTPS
     /// </summary>
     public class ModuleRtpsShield : PartModule, IPartMassModifier
     {
+        /// <summary>Version of the read-only state contract exposed to other mods.</summary>
+        public const int ContractVersion = 1;
+
         /// <summary>Persisted state layout version.</summary>
         public const int StateVersion = 1;
 
         /// <summary>Marker id of a pre-RealTPS host in flight that had no stock ablator; RealTPS leaves it untouched.</summary>
         public const string LegacyUntreatedId = "legacy-untreated";
+
+        /// <summary>Name of the event sent to the part when the shield state changes.</summary>
+        public const string StateEventName = "OnRtpsStateChanged";
 
         private const string SnapshotNodeName = "RTPS_SNAPSHOT";
         private const string StockAblatorResource = "Ablator";
@@ -102,10 +108,18 @@ namespace RealTPS
 
         // ----- read-only contract and display -----
 
+        [KSPField] public int rtpsContractVersion = ContractVersion;
+
+        /// <summary><c>unresolved</c>, <c>active</c>, <c>inert</c> or <c>legacy_untreated</c>.</summary>
+        [KSPField] public string tpsMode = "unresolved";
+
         /// <summary>True when no consumable is left anywhere on the face.</summary>
         [KSPField] public bool tpsDepleted;
 
         [KSPField] public bool tpsShearOverload;
+
+        /// <summary>True when the committed material is no longer offered by the part's selector.</summary>
+        [KSPField] public bool tpsDetached;
 
         [KSPField(guiName = "#LOC_RTPS_ui_sink", guiFormat = "F1", guiUnits = " kW")]
         public double sinkPowerKw;
@@ -155,6 +169,12 @@ namespace RealTPS
         public bool IsActive
         {
             get { return mode == Mode.Active && material != null; }
+        }
+
+        /// <summary>The committed profile, or null while unresolved, inert or untreated.</summary>
+        public MaterialDefinition CommittedMaterial
+        {
+            get { return mode == Mode.Active ? material : null; }
         }
 
         /// <summary>Remaining share of the consumable over the whole face, 0..1; 1 for materials without one.</summary>
@@ -654,10 +674,20 @@ namespace RealTPS
         internal void Finish(double dt)
         {
 
+            if (result.ShearOverload != tpsShearOverload)
+            {
+                tpsShearOverload = result.ShearOverload;
+                if (tpsShearOverload)
+                {
+                    Notify("shear_overload");
+                }
+            }
+
             bool depleted = material.HasConsumable && tpsInventory <= AblationSolver.DepletionThreshold;
             if (depleted && !tpsDepleted)
             {
                 tpsDepleted = true;
+                Notify("depleted");
                     ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_depleted", part.partInfo.title), 8f, ScreenMessageStyle.UPPER_CENTER);
                 RtpsLog.Info(PartLabel() + ": thermal protection exhausted at skin " + F(part.skinTemperature) + " K");
             }
@@ -665,6 +695,7 @@ namespace RealTPS
             if (!reuseLimitExceeded && material.ReuseSurfaceTemp > 0.0 && part.skinTemperature > material.ReuseSurfaceTemp)
             {
                 reuseLimitExceeded = true;
+                Notify("reuse_limit_exceeded");
             }
 
         }
@@ -673,6 +704,23 @@ namespace RealTPS
         {
             CelestialBody body = vessel.mainBody;
             return body != null && body.atmosphere && body.atmosphereContainsOxygen && vessel.staticPressurekPa > 0.0;
+        }
+
+        private void Notify(string stateName)
+        {
+            try
+            {
+                var details = new BaseEventDetails(BaseEventDetails.Sender.USER);
+                details.Set("contractVersion", ContractVersion);
+                details.Set("state", stateName);
+                details.Set("materialId", committedMaterialId);
+                details.Set("remainingFraction", RemainingFraction);
+                part.SendEvent(StateEventName, details, 0);
+            }
+            catch (Exception e)
+            {
+                RtpsLog.Warn("state event '" + stateName + "' failed: " + e.Message);
+            }
         }
 
         // ================================================================================================
@@ -720,6 +768,7 @@ namespace RealTPS
         {
             bool flight = HighLogic.LoadedSceneIsFlight;
             bool active = mode == Mode.Active && material != null;
+            tpsMode = mode == Mode.Active ? "active" : (mode == Mode.Inert ? "inert" : (mode == Mode.LegacyUntreated ? "legacy_untreated" : "unresolved"));
 
             uiMaterial = DisplayName();
             uiStatus = StatusText();
