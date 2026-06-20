@@ -3,6 +3,46 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.10.0 for KSP 1.12.x
+
+ - 2026-06-20
+
+A vessel in flight keeps what it was launched with.
+
+### Changes since the previous version
+
+* Added: Profile snapshot. At launch a shield stores the exact material profile it was built with, so editing,
+  hiding or removing that material later doesn't change a vessel already in flight. A stored profile that is
+  damaged, or was written by a newer RealTPS, leaves the shield INACTIVE with an on-screen warning; it's never
+  replaced by a guess.
+* Added: Vessels launched before RealTPS keep their stock Ablator at the stock rate ("Stock ablator"), and an
+  inflatable shield launched before RealTPS stays exactly as stock ("Unchanged shield").
+* Added: Craft saved before RealTPS convert their stock Ablator to the selected material in the editor, never with
+  more protection than they had: no more than the same fill or the same cooling energy.
+* Added: If B9PartSwitch picks another material for a shield in flight (after a change in the part config),
+  RealTPS selects the material the shield was built from again and says so. If that material isn't offered at all
+  anymore, the shield keeps flying with it, marked "(no longer offered)", and its mass is kept.
+* Added: If a material's resource definition is removed, the shield keeps its material as part mass instead of
+  losing it.
+* Changed: B9PartSwitch is reached through a late-bound, guarded proxy: a missing or changed B9PartSwitch leaves the
+  shields out of the way instead of throwing errors.
+
+### For Modders
+
+* Public contract version 1 on `ModuleRtpsShield`, read-only: `rtpsContractVersion`, `tpsMode` (`active`, `inert`,
+  `legacy_untreated`), `tpsDepleted`, `tpsShearOverload`, `tpsDetached`, and the persisted `tpsInventory`,
+  `tpsCapacity`, `tpsPyrolysed`, `reuseLimitExceeded` and `peakSurfaceTemp`.
+* `OnRtpsStateChanged` part event, with `state` (`depleted`, `shear_overload`, `reuse_limit_exceeded`),
+  `contractVersion`, `materialId` and `remainingFraction`.
+* `schemaVersion` is optional in a catalogue profile: left out, it means the installed schema. A snapshot always
+  records it, and a snapshot newer than the installed RealTPS is refused.
+* The plugin declares `KSPAssembly("RealTPSRuntime")`, so other plugins can depend on it.
+
+### Known Issues
+
+* A snapshot can't freeze a resource definition: the specific heat and unit cost of a material's resource come
+  from whatever definition is installed.
+
 ## v0.9.0 for KSP 1.12.x
 
  - 2026-05-28

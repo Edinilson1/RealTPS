@@ -8,7 +8,7 @@ RealTPS (Real Thermal Protection Systems) is a Kerbal Space Program mod that rew
 for more realism. Instead of the one generic "Ablator" you get a catalogue of real thermal protection materials,
 and a heat shield is no longer just a bar that drains.
 
-## Current version: 0.9.0
+## Current version: 0.10.0
 
 **License**: [MIT](LICENSE)\
 **KSP version**: 1.12.x\
