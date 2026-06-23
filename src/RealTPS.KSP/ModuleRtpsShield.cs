@@ -231,6 +231,14 @@ namespace RealTPS
         {
             base.OnSave(node);
 
+            if (HighLogic.LoadedSceneIsEditor && started && !reconciling)
+            {
+                // The craft file is what flight loads. Capture the final editor state (selected subtype,
+                // tweaked resource amount, switcher mass) now; the field values were written before OnSave.
+                CommitRequested(true);
+                WriteState(node);
+            }
+
             if (!string.IsNullOrEmpty(snapshotText))
             {
                 try
@@ -246,6 +254,19 @@ namespace RealTPS
                     RtpsLog.Error("material profile could not be saved: " + e.Message);
                 }
             }
+        }
+
+        private void WriteState(ConfigNode node)
+        {
+            node.SetValue("rtpsStateVersion", rtpsStateVersion.ToString(CultureInfo.InvariantCulture), true);
+            node.SetValue("committedMaterialId", committedMaterialId ?? string.Empty, true);
+            node.SetValue("tpsInventory", tpsInventory.ToString("R", CultureInfo.InvariantCulture), true);
+            node.SetValue("tpsCapacity", tpsCapacity.ToString("R", CultureInfo.InvariantCulture), true);
+            node.SetValue("tpsPyrolysed", tpsPyrolysed.ToString("R", CultureInfo.InvariantCulture), true);
+            node.SetValue("committedSwitcherMass", committedSwitcherMass.ToString("R", CultureInfo.InvariantCulture), true);
+            node.SetValue("legacyMode", legacyMode ? "True" : "False", true);
+            node.SetValue("reuseLimitExceeded", reuseLimitExceeded ? "True" : "False", true);
+            node.SetValue("peakSurfaceTemp", peakSurfaceTemp.ToString("R", CultureInfo.InvariantCulture), true);
         }
 
         // ================================================================================================
