@@ -210,6 +210,8 @@ namespace RealTPS
         {
             base.OnLoad(node);
 
+            // B9PartSwitch also calls Load() with a subtype's DATA node or with the prefab node. Those carry
+            // neither a snapshot nor a shield state and must not clear what this part already holds.
             ConfigNode holder = node.GetNode(SnapshotNodeName);
             if (holder != null && holder.nodes.Count > 0)
             {
@@ -281,6 +283,22 @@ namespace RealTPS
                 RtpsLog.Error("start failed on " + PartLabel() + ": " + e);
             }
             RefreshUi();
+        }
+
+        /// <summary>Sent by B9PartSwitch after it loaded a subtype's DATA (or the prefab node) into this module.</summary>
+        [KSPEvent(guiActive = false, guiActiveEditor = false, active = true)]
+        public void ModuleDataChanged(BaseEventDetails details)
+        {
+            if (reconciling || !started)
+            {
+                return;
+            }
+            if (HighLogic.LoadedSceneIsEditor)
+            {
+                CommitRequested(true);
+                RefreshUi();
+            }
+            // In flight the request is ignored: the committed profile stays.
         }
 
         // ----- editor -----
