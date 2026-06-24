@@ -3,6 +3,18 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.10.1 for KSP 1.12.x
+
+ - 2026-06-23
+
+### Changes since the previous version
+
+* Fixed: B9PartSwitch also loads a subtype's data, and the prefab's, into the shield module; that cleared the
+  profile the part had stored. It's kept now.
+* Fixed: Craft files could keep the material and amount from before the last change in the editor, because the
+  game writes a module's fields before its save code runs. The final editor state is captured when the craft is
+  saved.
+
 ## v0.10.0 for KSP 1.12.x
 
  - 2026-06-20
