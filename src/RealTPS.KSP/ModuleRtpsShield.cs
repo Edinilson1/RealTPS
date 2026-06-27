@@ -524,6 +524,19 @@ namespace RealTPS
                 RtpsLog.Info(PartLabel() + ": pre-RealTPS host without stock ablator; left with its stock thermal properties");
                 return false;
             }
+
+            // A part created without the editor (spawned by a contract or another mod): commit the request now.
+            CommitRequested(false);
+            if (mode != Mode.Active)
+            {
+                WarnOnScreen();
+                return false;
+            }
+            if (switcher == null)
+            {
+                committedSwitcherMass = 0.0;
+            }
+            return true;
         }
 
         /// <summary>
