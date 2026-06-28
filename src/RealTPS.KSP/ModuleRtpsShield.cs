@@ -331,6 +331,7 @@ namespace RealTPS
             {
                 CaptureInventoryFromPart();
             }
+            LogLifecycle("editor");
         }
 
         /// <summary>
@@ -439,10 +440,12 @@ namespace RealTPS
 
             if (!ResolveFlightProfile(switcher))
             {
+                LogLifecycle("flight");
                 return;
             }
 
             Reconcile(switcher);
+            LogLifecycle("flight");
         }
 
         /// <summary>Decides which profile this shield flies with. Returns false when the shield stays without one.</summary>
@@ -1003,6 +1006,22 @@ namespace RealTPS
         private static string F(double value)
         {
             return value.ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
+        private void LogLifecycle(string scene)
+        {
+            B9SwitcherProxy switcher = B9SwitcherProxy.Find(part, switcherModuleId);
+            RtpsLog.Info("lifecycle: part=" + PartLabel() + " scene=" + scene
+                + " requested=" + materialId
+                + " committed=" + committedMaterialId
+                + " switcher=" + (switcher != null ? switcher.CurrentSubtypeName : "none")
+                + " mode=" + (mode == Mode.Active ? "active" : (mode == Mode.Inert ? "inert" : (mode == Mode.LegacyUntreated ? "legacy_untreated" : "unresolved")))
+                + (legacyMode ? " legacy=stock-rate" : string.Empty)
+                + (tpsDetached && mode == Mode.Active && scene == "flight" ? " detached=true" : string.Empty)
+                + " inventory=" + F(tpsInventory) + "/" + F(tpsCapacity)
+                + " massDelta=" + F(massDelta * 1000.0) + "kg"
+                + (mode == Mode.Active && scene == "flight" ? " emissive=" + F(part.emissiveConstant) + " skinMaxTemp=" + F(part.skinMaxTemp) + " skinIntMult=" + F(part.skinInternalConductionMult) : string.Empty)
+                + (mode == Mode.Inert ? " reason=\"" + inertReason + "\"" : string.Empty));
         }
     }
 }
