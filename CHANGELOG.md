@@ -3,6 +3,17 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.10.2 for KSP 1.12.x
+
+ - 2026-06-30
+
+### Changes since the previous version
+
+* Fixed: Shields on vessels that never went through the editor (spawned by a contract or another mod) commit their
+  default material at launch.
+* Added: One `lifecycle:` line per shield and scene in KSP.log (requested and committed material, selector, mode,
+  material left, mass correction), for bug reports.
+
 ## v0.10.1 for KSP 1.12.x
 
  - 2026-06-23
