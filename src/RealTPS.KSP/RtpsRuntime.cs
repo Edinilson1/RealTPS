@@ -70,6 +70,7 @@ namespace RealTPS
     {
         private static MaterialCatalogue current;
         private static bool researchGating = true;
+        private static bool telemetryLog;
         private static bool hooked;
 
         /// <summary>The loaded catalogue. Never null; empty when the game database is not available.</summary>
@@ -101,10 +102,24 @@ namespace RealTPS
             }
         }
 
+        /// <summary><c>RTPS_SETTINGS { telemetryLog }</c>: one log line per second per active shield. Default false.</summary>
+        public static bool TelemetryLog
+        {
+            get
+            {
+                if (current == null)
+                {
+                    Reload();
+                }
+                return telemetryLog;
+            }
+        }
+
         public static void Reload()
         {
             var nodes = new List<CfgNode>();
             researchGating = true;
+            telemetryLog = false;
 
             if (GameDatabase.Instance != null)
             {
@@ -121,6 +136,10 @@ namespace RealTPS
                     if (settings[i].HasValue("researchGatingWhenUpgradesDisabled") && bool.TryParse(settings[i].GetValue("researchGatingWhenUpgradesDisabled").Trim(), out value))
                     {
                         researchGating = value;
+                    }
+                    if (settings[i].HasValue("telemetryLog") && bool.TryParse(settings[i].GetValue("telemetryLog").Trim(), out value))
+                    {
+                        telemetryLog = value;
                     }
                 }
 

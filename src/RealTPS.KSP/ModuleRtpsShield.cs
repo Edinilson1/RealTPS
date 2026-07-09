@@ -161,6 +161,7 @@ namespace RealTPS
         [NonSerialized] private double baseSkinMaxTemp;
         [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
+        [NonSerialized] private double nextTelemetry;
         [NonSerialized] private bool oxidising;
 
         // ----- public read-only API -----
@@ -753,6 +754,10 @@ namespace RealTPS
                 Notify("reuse_limit_exceeded");
             }
 
+            if (RtpsCatalogue.TelemetryLog)
+            {
+                LogTelemetry(part.skinTemperature);
+            }
         }
 
         private bool InOxygenAtmosphere()
@@ -1022,6 +1027,31 @@ namespace RealTPS
                 + " massDelta=" + F(massDelta * 1000.0) + "kg"
                 + (mode == Mode.Active && scene == "flight" ? " emissive=" + F(part.emissiveConstant) + " skinMaxTemp=" + F(part.skinMaxTemp) + " skinIntMult=" + F(part.skinInternalConductionMult) : string.Empty)
                 + (mode == Mode.Inert ? " reason=\"" + inertReason + "\"" : string.Empty));
+        }
+
+        private void LogTelemetry(double skinTemp)
+        {
+            double now = Planetarium.GetUniversalTime();
+            if (now < nextTelemetry || (skinTemp < 400.0 && sinkPowerKw <= 0.0))
+            {
+                return;
+            }
+            nextTelemetry = now + 1.0;
+            RtpsLog.Info("telemetry: part=" + PartLabel()
+                + " ut=" + now.ToString("F2", CultureInfo.InvariantCulture)
+                + " alt=" + F(vessel.altitude)
+                + " speed=" + F(vessel.srfSpeed)
+                + " skinT=" + F(skinTemp)
+                + " skinMax=" + F(part.skinMaxTemp)
+                + " intT=" + F(part.temperature)
+                + " inv=" + F(tpsInventory)
+                + " pyro=" + F(tpsPyrolysed)
+                + " sinkKw=" + F(sinkPowerKw)
+                + " convKw=" + F(part.thermalConvectionFlux)
+                + " radKw=" + F(part.thermalRadiationFlux)
+                + " qPa=" + F(part.dynamicPressurekPa * 1000.0)
+                + " emissive=" + F(part.emissiveConstant)
+                + " shear=" + (tpsShearOverload ? "1" : "0"));
         }
     }
 }
