@@ -33,6 +33,15 @@ namespace RtpsTool
             {
                 Console.WriteLine(issue);
             }
+            repo.ReportedIssues = repo.Issues.Count;
+            if (command == "validate")
+            {
+                Provenance.Check(repo);
+                foreach (ValidationIssue issue in repo.Issues.Skip(repo.ReportedIssues))
+                {
+                    Console.WriteLine(issue);
+                }
+            }
             bool failed = repo.Issues.Any(i => i.IsError);
 
             switch (command)
@@ -111,6 +120,7 @@ namespace RtpsTool
         public MaterialCatalogue Catalogue;
         public List<HostDefinition> Hosts = new List<HostDefinition>();
         public List<ValidationIssue> Issues = new List<ValidationIssue>();
+        public int ReportedIssues;
 
         public static Repository Load(string root)
         {
