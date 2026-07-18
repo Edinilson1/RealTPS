@@ -3,6 +3,21 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.11.0 for KSP 1.12.x
+
+ - 2026-07-18
+
+With this version the catalogue is complete: 17 materials in four families, 14 of them on nine stock parts
+(`HeatShield0`, `HeatShield1`, `HeatShield1p5`, `HeatShield2`, `HeatShield3`, `kv1Pod`, `kv2Pod`, `kv3Pod`,
+`InflatableHeatShield`) and 3 (Reinforced Carbon-Carbon, the ADEPT fabric, UHTC) waiting for a part that fits.
+
+### Changes since the previous version
+
+* Added: Brazilian Portuguese translation.
+* Added: Optional telemetry. With `RTPS_SETTINGS { telemetryLog = true }`, KSP.log gets one line per second for
+  each shield hotter than 400 K or burning material: temperatures and limits, material left, cooling, convection
+  and radiation, dynamic pressure, emissivity and conduction.
+
 ## v0.10.2 for KSP 1.12.x
 
  - 2026-06-30
