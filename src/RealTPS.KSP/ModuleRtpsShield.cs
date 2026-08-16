@@ -159,6 +159,7 @@ namespace RealTPS
         [NonSerialized] private bool baseCaptured;
         [NonSerialized] private double baseEmissive;
         [NonSerialized] private double baseSkinMaxTemp;
+        [NonSerialized] private double baseSkinInternalMult;
         [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
         [NonSerialized] private double nextTelemetry;
@@ -659,8 +660,25 @@ namespace RealTPS
             Part source = part.partInfo != null && part.partInfo.partPrefab != null ? part.partInfo.partPrefab : part;
             baseEmissive = source.emissiveConstant;
             baseSkinMaxTemp = source.skinMaxTemp > 0.0 ? source.skinMaxTemp : source.maxTemp;
+            baseSkinInternalMult = source.skinInternalConductionMult;
             baseConductivity = source.heatConductivity;
             baseCaptured = true;
+        }
+
+        /// <summary>
+        /// Makes the engine conduct from skin to interior like the cells' series conductance. Every engine
+        /// factor is read live; when nothing can be derived the part keeps its own multiplier.
+        /// </summary>
+        private void ApplyConduction(double target)
+        {
+            double multiplier = double.NaN;
+            if (target > 0.0)
+            {
+                double engine = ShieldSolver.EngineConductance(PhysicsGlobals.ConductionFactor, part.heatConductivity,
+                    PhysicsGlobals.SkinInternalConductionFactor, PhysicsGlobals.ThermalConvergenceFactor);
+                multiplier = ShieldSolver.ConductionMultiplier(target, state.Construction.Area, part.radiativeArea * part.skinExposedAreaFrac, engine);
+            }
+            part.skinInternalConductionMult = double.IsNaN(multiplier) ? baseSkinInternalMult : multiplier;
         }
 
         /// <summary>
@@ -1051,6 +1069,7 @@ namespace RealTPS
                 + " radKw=" + F(part.thermalRadiationFlux)
                 + " qPa=" + F(part.dynamicPressurekPa * 1000.0)
                 + " emissive=" + F(part.emissiveConstant)
+                + " condMult=" + F(part.skinInternalConductionMult)
                 + " shear=" + (tpsShearOverload ? "1" : "0"));
         }
     }
