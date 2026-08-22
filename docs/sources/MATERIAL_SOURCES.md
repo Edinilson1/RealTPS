@@ -36,6 +36,7 @@ repository. "Not verified" means just that: nobody in this project has confirmed
 | `nasa_uhtc` | NASA - ultra-high-temperature ceramic (ZrB2-SiC family) arc-jet study | <https://ntrs.nasa.gov/api/citations/20040111983/downloads/20040111983.pdf> |
 | `iop_starlite` | Institute of Physics - Enigma: Starlite (uncertain historical claims) | <https://spark.iop.org/enigma-starlite> |
 | `tpsx_uhtc` | NASA TPSX Material Properties Database - ZrB2-20% SiC | <https://tpsx.arc.nasa.gov/Material?id=28&units=si> |
+| `nasa_llis_672` | NASA Lessons Learned 672 - carbon-cloth phenolic acceptance bounds (conductivity at 394 K) | <https://llis.nasa.gov/lesson/672> |
 | `ksp_stock` | Kerbal Space Program 1.12.5 part configs and decompiled ModuleAblator (stock reference: 2.4 MJ/kg, 0.1*exp(-7500/T)) | The game files themselves (not redistributable) |
 | `model` | RealTPS numerical mission model (tools/RtpsTool simulate); see docs/sources/MISSION_TEST_MATRIX.md | `docs/sources/MISSION_TEST_MATRIX.md` |
 
@@ -54,6 +55,7 @@ deployable_radiative, Experimental.
 | emissivity | 0.9 | - | ASSUMPTION | `nasa_adept` | 0.9 is a modelling assumption in the cited study, not a measurement |
 | charEmissivity | 0.9 | - | ASSUMPTION | `nasa_adept` | no char: equal to the emissivity |
 | maxSurfaceTemp | 2400 | K | CALIBRATION | `nasa_adept` | native catastrophic fallback. Criterion: placed above the reradiation temperature of the highest tested point (2.46 MW/m2 at 9.6 kPa); no host exists yet to calibrate against |
+| conductivity | 5 | W/(m K) | ASSUMPTION | - | through-thickness value assumed for 3-D woven carbon cloth; no transferable tensor was found |
 | costPerKg | 220 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 300 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 26000 | funds | CALIBRATION | - | gameplay cost |
@@ -78,6 +80,7 @@ flexible_insulating, FlightProven.
 | emissivity | 0.85 | - | ASSUMPTION | - | not verified for the outer ceramic cloth |
 | charEmissivity | 0.85 | - | ASSUMPTION | - | no char: equal to the emissivity |
 | maxSurfaceTemp | 1800 | K | DERIVED | `nasa_ftps_tests` | temperature at which the surface reradiates the highest tested heat flux for this class: eps*sigma*T^4 = 0.5 MW/m2 gives about 1800 K. A flux-equivalent limit, higher than the fabric's real service temperature |
+| conductivity | 0.1 | W/(m K) | ASSUMPTION | `nasa_loftid` | effective conductivity of the insulating layup; NASA shows vacuum curves for the constituent insulators, not one blanket value |
 | costPerArea | 20 | funds/m2 | CALIBRATION | - | gameplay cost |
 
 ### `ftps-sic-gen2`: Silicon-Carbide Blanket (Gen 2)
@@ -93,6 +96,7 @@ flexible_insulating, FlightProven.
 | emissivity | 0.88 | - | ASSUMPTION | - | not verified for the SiC outer fabric |
 | charEmissivity | 0.88 | - | ASSUMPTION | - | no char: equal to the emissivity |
 | maxSurfaceTemp | 1970 | K | ASSUMPTION | `nasa_loftid` | native catastrophic fallback. Criterion: flux-equivalent limit for an assumed 0.75 MW/m2 class (eps*sigma*T^4), about 1970 K; the 0.75 MW/m2 figure is not verified |
+| conductivity | 0.07 | W/(m K) | ASSUMPTION | `nasa_loftid` | effective conductivity of the insulating layup; not verified |
 | costPerArea | 55 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 14000 | funds | CALIBRATION | - | gameplay cost |
 | techNode | metaMaterials | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
@@ -110,6 +114,7 @@ flexible_insulating, Theoretical.
 | emissivity | 0.9 | - | FICTIONAL | - | theoretical |
 | charEmissivity | 0.9 | - | FICTIONAL | - | theoretical |
 | maxSurfaceTemp | 2150 | K | FICTIONAL | `model` | theoretical: flux-equivalent limit for an assumed 1.1 MW/m2 class |
+| conductivity | 0.04 | W/(m K) | FICTIONAL | - | theoretical |
 | costPerArea | 160 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 30000 | funds | CALIBRATION | - | gameplay cost |
 | techNode | experimentalScience | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
@@ -128,6 +133,7 @@ rigid_ablative, Historical.
 | charEmissivity | 0.85 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 1900 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.065 | W/(m K) | SOURCED | `amorim_tps` | P45 0.06 and P50 0.07 W/(m K) (ASTM C177, measurement temperature not stated); the midpoint is used |
 | costPerKg | 1 | funds/kg | CALIBRATION | - | gameplay cost |
 | ablation.onsetTemp | 550 | K | CALIBRATION | `model` | skin temperature at which the lumped pyrolysis law switches on |
 | ablation.activationTemp | 8000 | K | CALIBRATION | `model` | Arrhenius temperature of the lumped areal rate law (stock uses 7500 K) |
@@ -149,6 +155,7 @@ rigid_ablative, Historical.
 | charEmissivity | 0.88 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 2300 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.35 | W/(m K) | ASSUMPTION | - | conductivity of the protection layer; no defensible dataset for this formulation was found, so one scalar is assumed. It sets the layer observer and the conduction into the part |
 | costPerKg | 1.2 | funds/kg | CALIBRATION | - | gameplay cost |
 | unlockCost | 800 | funds | CALIBRATION | - | gameplay cost |
 | ablation.onsetTemp | 650 | K | CALIBRATION | `model` | skin temperature at which the lumped pyrolysis law switches on |
@@ -172,6 +179,7 @@ rigid_ablative, FlightProven.
 | charEmissivity | 0.88 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 2900 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.242 | W/(m K) | SOURCED | `tpsx_avcoat` | 0.242 W/(m K), marked STP; source and uncertainty unspecified in the database |
 | costPerKg | 5 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 40 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 2500 | funds | CALIBRATION | - | gameplay cost |
@@ -197,6 +205,7 @@ rigid_ablative, FlightProven.
 | charEmissivity | 0.9 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 2100 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.0592 | W/(m K) | SOURCED | `tpsx_sla561v` | 0.0592 W/(m K) virgin, marked STP |
 | costPerKg | 7 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 40 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 3500 | funds | CALIBRATION | - | gameplay cost |
@@ -221,6 +230,7 @@ rigid_ablative, FlightProven.
 | charEmissivity | 0.9 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 3600 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 1 | W/(m K) | ASSUMPTION | `nasa_llis_672` | 1.0 W/(m K) assumed inside the acceptance bounds of a carbon-cloth phenolic (about 0.17-1.9 at 394 K); specification bounds, not a measured heat-shield curve |
 | costPerKg | 9 | funds/kg | CALIBRATION | - | gameplay cost |
 | unlockCost | 6000 | funds | CALIBRATION | - | gameplay cost |
 | ablation.onsetTemp | 800 | K | CALIBRATION | `model` | skin temperature at which the lumped pyrolysis law switches on |
@@ -242,6 +252,7 @@ rigid_ablative, FlightProven.
 | charEmissivity | 0.92 | - | SOURCED | `tpsx_sirca` | kept equal to the virgin value: no separate char value is published |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 2000 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.059 | W/(m K) | SOURCED | `tpsx_sirca` | 0.059 W/(m K) virgin (non-STP, measurement temperature not exposed) |
 | costPerKg | 12 | funds/kg | CALIBRATION | - | gameplay cost |
 | unlockCost | 5000 | funds | CALIBRATION | - | gameplay cost |
 | ablation.onsetTemp | 700 | K | CALIBRATION | `model` | skin temperature at which the lumped pyrolysis law switches on |
@@ -266,6 +277,7 @@ rigid_ablative, FlightProven.
 | charEmissivity | 0.9 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 3300 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.305 | W/(m K) | SOURCED | `tpsx_pica` | 0.305 W/(m K) virgin (non-STP; temperature and uncertainty unspecified) |
 | costPerKg | 16 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 60 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 12000 | funds | CALIBRATION | - | gameplay cost |
@@ -291,6 +303,7 @@ rigid_ablative, Experimental.
 | charEmissivity | 0.9 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
 | charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
 | maxSurfaceTemp | 3600 | K | CALIBRATION | `model` | native catastrophic fallback. Criterion: gameplay calibration of the lumped KSP skin node, placed so the material is destroyed in the flux class where the literature says it stops being used; not a measured decomposition temperature |
+| conductivity | 0.4 | W/(m K) | ASSUMPTION | `nasa_heeet` | one scalar for a dual-layer weave (dense recession layer over an insulating layer); layer conductivities are not published in the cited page |
 | costPerKg | 30 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 150 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 25000 | funds | CALIBRATION | - | gameplay cost |
@@ -316,6 +329,7 @@ rigid_ablative, Fictional.
 | charEmissivity | 0.95 | - | FICTIONAL | - | fictional |
 | charSurfaceFraction | 0.02 | - | FICTIONAL | - | fictional: chars almost immediately |
 | maxSurfaceTemp | 2600 | K | FICTIONAL | `model` | fictional; tuned in the mission model |
+| conductivity | 0.05 | W/(m K) | FICTIONAL | - | fictional: the swollen char is the insulation. The expansion itself is not modelled |
 | costPerKg | 45 | funds/kg | CALIBRATION | - | gameplay cost |
 | unlockCost | 30000 | funds | CALIBRATION | - | gameplay cost |
 | ablation.onsetTemp | 450 | K | FICTIONAL | `model` | fictional; tuned |
@@ -341,6 +355,7 @@ rigid_reusable, FlightProven.
 | charEmissivity | 0.88 | - | SOURCED | `tpsx_li900` | no char: equal to the emissivity |
 | maxSurfaceTemp | 1760 | K | SOURCED | `tpsx_li900` | native catastrophic fallback. Criterion: predicted single-use limit about 1760 K (the database also lists melting near 1978 K) |
 | reuseSurfaceTemp | 1590 | K | SOURCED | `tpsx_li900` | predicted multiple-use limit about 1590 K; RealTPS only reports when it is exceeded |
+| conductivity | 0.0476 | W/(m K) | SOURCED | `tpsx_li900` | through-thickness 0.0476 +/- 0.0086 W/(m K) at standard conditions |
 | costPerArea | 900 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 9000 | funds | CALIBRATION | - | gameplay cost |
 | techNode | hypersonicFlight | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
@@ -358,6 +373,7 @@ rigid_reusable, FlightProven.
 | emissivity | 0.9 | - | ASSUMPTION | - | not verified |
 | charEmissivity | 0.9 | - | ASSUMPTION | - | no char: equal to the emissivity |
 | maxSurfaceTemp | 1970 | K | ASSUMPTION | - | native catastrophic fallback. Criterion: about 1970 K is the commonly quoted TUFROC capability; not verified against a primary source in this project |
+| conductivity | 0.2 | W/(m K) | ASSUMPTION | - | one scalar for a conductive cap over a low-conductivity base; layer values were not verified |
 | costPerArea | 2200 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 22000 | funds | CALIBRATION | - | gameplay cost |
 | techNode | aerospaceTech | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
@@ -376,6 +392,7 @@ rigid_reusable, FlightProven.
 | charEmissivity | 0.78 | - | SOURCED | `tpsx_rcc` | no char: equal to the emissivity |
 | maxSurfaceTemp | 2030 | K | SOURCED | `tpsx_rcc` | native catastrophic fallback. Criterion: single-use temperature 2030 K |
 | reuseSurfaceTemp | 1920 | K | SOURCED | `tpsx_rcc` | multiple-use temperature 1920 K |
+| conductivity | 3.89 | W/(m K) | SOURCED | `tpsx_rcc` | through-thickness 3.89 W/(m K) at standard conditions (coated) |
 | costPerKg | 400 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 6000 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 28000 | funds | CALIBRATION | - | gameplay cost |
@@ -398,6 +415,7 @@ rigid_reusable, Experimental.
 | emissivity | 0.8 | - | ASSUMPTION | - | not verified |
 | charEmissivity | 0.8 | - | ASSUMPTION | - | no char: equal to the emissivity |
 | maxSurfaceTemp | 2600 | K | CALIBRATION | `nasa_uhtc` | native catastrophic fallback. Criterion: above the roughly 2073 K surface temperature reported for a 3.5 MW/m2, 600 s test; no host exists yet to calibrate against |
+| conductivity | 98.7 | W/(m K) | SOURCED | `tpsx_uhtc` | 98.7 +/- 4.9 W/(m K) for ZrB2-20% SiC (non-STP; a 30% SiC composition measures about 56-62) |
 | costPerKg | 900 | funds/kg | CALIBRATION | - | gameplay cost |
 | costPerArea | 14000 | funds/m2 | CALIBRATION | - | gameplay cost |
 | unlockCost | 40000 | funds | CALIBRATION | - | gameplay cost |

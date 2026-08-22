@@ -118,6 +118,9 @@ namespace RealTPS.Core.Materials
         /// </summary>
         public double MaxSurfaceTemp;
 
+        /// <summary>Thermal conductivity of the protection layer, W/(m K). 0 = not stated: no layer model.</summary>
+        public double Conductivity;
+
         /// <summary>
         /// Surface temperature above which a reusable material is no longer reusable, K (0 = not stated).
         /// Reported once when exceeded; damage is governed by <see cref="DamageSurfaceTemp"/>.
