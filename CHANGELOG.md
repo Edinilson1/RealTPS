@@ -3,6 +3,21 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.12.0 for KSP 1.12.x
+
+ - 2026-08-27
+
+### Changes since the previous version
+
+* Changed: The heat that gets through to the part is now worked out at every step from the material's conductivity
+  and the thickness left, with the game's own conduction constants, instead of a hand-tuned multiplier per
+  material. A layer that has burnt down lets more heat through.
+* Changed: Each material's detail line shows its reference thickness and conductivity.
+
+### For Modders
+
+* Material schema (still version 1): `conductivity` is required; `skinInternalConductionMult` is gone.
+
 ## v0.11.0 for KSP 1.12.x
 
  - 2026-07-18
