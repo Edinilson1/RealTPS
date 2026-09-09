@@ -63,7 +63,8 @@ namespace RealTPS.Core.Physics
     /// Lumped thermal-protection material response: the rate laws of one whole face. RealTPS owns only the terms
     /// computed here: energy carried away by pyrolysed material and zero-sink erosion. Convection,
     /// reradiation, conduction and sensible heat storage belong to the host thermal engine and are never
-    /// subtracted here.
+    /// subtracted here. <c>Shield.ShieldSolver</c> applies the same laws cell by cell; with every cell stocked
+    /// its totals equal this solver's.
     /// </summary>
     public static class AblationSolver
     {
