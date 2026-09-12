@@ -5,6 +5,7 @@ using RealTPS.Core.Cfg;
 using RealTPS.Core.Hosts;
 using RealTPS.Core.Materials;
 using RealTPS.Core.Physics;
+using RealTPS.Core.Shield;
 using KSP.Localization;
 using UnityEngine;
 
@@ -69,6 +70,13 @@ namespace RealTPS
         /// <summary><c>moduleID</c> of the B9PartSwitch module that selects the material.</summary>
         [KSPField] public string switcherModuleId = "rtpsMaterial";
 
+        // Grid and face. A shield keeps the grid and the construction it was launched with.
+        [KSPField] public int sectors = ShieldLayout.DefaultSectors;
+        [KSPField] public int rings = ShieldLayout.DefaultRings;
+        [KSPField] public double centerPercent = ShieldLayout.DefaultCenterPercent;
+        [KSPField] public string protectedFace = "0, -1, 0";
+        [KSPField] public string sectorZero = "1, 0, 0";
+
         /// <summary>
         /// The <b>requested</b> material: the part config value, replaced by the active B9 subtype's
         /// <c>MODULE/DATA</c>. It is a request, not the state: see <see cref="committedMaterialId"/>.
@@ -105,6 +113,9 @@ namespace RealTPS
         [KSPField(isPersistant = true)] public double peakSurfaceTemp;
 
         [SerializeField] private string snapshotText = string.Empty;
+
+        /// <summary>The stored <c>RTPS_SHIELD_STATE</c> node as text: what was loaded, until flight resolves it.</summary>
+        [SerializeField] private string shieldStateText = string.Empty;
 
         // ----- read-only contract and display -----
 
@@ -148,10 +159,15 @@ namespace RealTPS
 
         [NonSerialized] private Mode mode = Mode.Unresolved;
         [NonSerialized] private MaterialDefinition material;
+        [NonSerialized] private ShieldState state;
+        [NonSerialized] private ShieldStepResult result;
+        [NonSerialized] private FaceFrame frame;
+        [NonSerialized] private Incidence flow;
         [NonSerialized] private string inertReason = string.Empty;
         [NonSerialized] private bool started;
         [NonSerialized] private bool reconciling;
         [NonSerialized] private bool resourceMissing;
+        [NonSerialized] private bool stateRefused;
         [NonSerialized] private double massDelta;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
@@ -170,7 +186,7 @@ namespace RealTPS
         /// <summary>True when a valid committed profile drives this shield.</summary>
         public bool IsActive
         {
-            get { return mode == Mode.Active && material != null; }
+            get { return mode == Mode.Active && material != null && state != null; }
         }
 
         /// <summary>The committed profile, or null while unresolved, inert or untreated.</summary>
@@ -227,6 +243,18 @@ namespace RealTPS
                     RtpsLog.Error("stored material profile could not be read: " + e.Message);
                 }
             }
+            ConfigNode stored = node.GetNode(ShieldState.NodeName);
+            if (stored != null)
+            {
+                try
+                {
+                    shieldStateText = CfgParser.Write(ConfigNodeBridge.ToCfg(stored));
+                }
+                catch (Exception e)
+                {
+                    RtpsLog.Error("stored shield state could not be read: " + e.Message);
+                }
+            }
         }
 
         public override void OnSave(ConfigNode node)
@@ -255,6 +283,28 @@ namespace RealTPS
                 {
                     RtpsLog.Error("material profile could not be saved: " + e.Message);
                 }
+            }
+
+            try
+            {
+                if (state != null && !stateRefused)
+                {
+                    node.AddNode(ConfigNodeBridge.ToConfigNode(state.Write()));
+                }
+                else if (!string.IsNullOrEmpty(shieldStateText))
+                {
+                    // Not resolved yet, or refused (damaged, or written by a newer build): write back exactly
+                    // what was loaded. A refused state is never replaced by a fresh shield.
+                    CfgNode parsed = CfgParser.Parse(shieldStateText);
+                    if (parsed.Nodes.Count > 0)
+                    {
+                        node.AddNode(ConfigNodeBridge.ToConfigNode(parsed.Nodes[0]));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                RtpsLog.Error("shield state could not be saved: " + e.Message);
             }
         }
 
@@ -362,6 +412,10 @@ namespace RealTPS
             peakSurfaceTemp = 0.0;
             tpsDepleted = false;
             committedMaterialId = materialId ?? string.Empty;
+            // A commit builds a new shield: nothing of an earlier flight state applies to it.
+            shieldStateText = string.Empty;
+            state = null;
+            stateRefused = false;
 
             if (problem != null)
             {
@@ -445,8 +499,14 @@ namespace RealTPS
                 LogLifecycle("flight");
                 return;
             }
+            if (!ResolveShieldState())
+            {
+                LogLifecycle("flight");
+                return;
+            }
 
             Reconcile(switcher);
+            ApplySurfaceProperties();
             LogLifecycle("flight");
         }
 
@@ -542,6 +602,114 @@ namespace RealTPS
                 committedSwitcherMass = 0.0;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Reads the stored cell state, or lays the cells out for a shield that enters flight for the first
+        /// time (or was committed before the cell model): uniform cells from the persisted totals, on the grid
+        /// and the construction the part has now. From then on both are frozen with the shield.
+        /// </summary>
+        private bool ResolveShieldState()
+        {
+            state = null;
+            stateRefused = false;
+            if (!string.IsNullOrEmpty(shieldStateText))
+            {
+                var issues = new List<ValidationIssue>();
+                ShieldState stored = null;
+                ShieldState.ReadStatus status;
+                try
+                {
+                    CfgNode root = CfgParser.Parse(shieldStateText);
+                    status = root.Nodes.Count > 0 ? ShieldState.Read(root.Nodes[0], issues, out stored) : ShieldState.ReadStatus.Invalid;
+                }
+                catch (Exception e)
+                {
+                    status = ShieldState.ReadStatus.Invalid;
+                    issues.Add(new ValidationIssue(true, "shield state", e.Message));
+                }
+                if (status != ShieldState.ReadStatus.Ok || stored == null)
+                {
+                    for (int i = 0; i < issues.Count; i++)
+                    {
+                        RtpsLog.Error(PartLabel() + ": stored shield state: " + issues[i]);
+                    }
+                    // The node stays as loaded and is written back unchanged.
+                    stateRefused = true;
+                    SetInert(Localizer.Format(status == ShieldState.ReadStatus.UnsupportedVersion ? "#LOC_RTPS_msg_state_newer" : "#LOC_RTPS_msg_state_invalid"));
+                    WarnOnScreen();
+                    return false;
+                }
+                state = stored;
+            }
+            else
+            {
+                ShieldLayout layout = legacyMode || !material.HasLayerModel ? ShieldLayout.Single() : HostLayout();
+                state = ShieldState.Uniform(layout, HostConstruction(), tpsInventory, tpsCapacity, tpsPyrolysed);
+                state.Seed = part.persistentId != 0u ? part.persistentId : 1u;
+            }
+
+            tpsInventory = state.TotalInventory;
+            tpsCapacity = state.TotalCapacity;
+            tpsPyrolysed = state.TotalPyrolysed;
+            result = new ShieldStepResult(state.Count);
+
+            double[] normal, tangent;
+            if (!ShieldGeometry.TryParseVector(protectedFace, out normal) || !ShieldGeometry.TryParseVector(sectorZero, out tangent)
+                || !ShieldGeometry.TryMakeFrame(normal, tangent, out frame))
+            {
+                RtpsLog.Error(PartLabel() + ": protectedFace / sectorZero are not a usable frame; using the underside of the part");
+                ShieldGeometry.TryMakeFrame(new[] { 0.0, -1.0, 0.0 }, new[] { 1.0, 0.0, 0.0 }, out frame);
+            }
+            return true;
+        }
+
+        private ShieldLayout HostLayout()
+        {
+            ShieldLayout layout = ShieldLayout.Parse(sectors.ToString(CultureInfo.InvariantCulture) + "," + rings.ToString(CultureInfo.InvariantCulture) + "," + centerPercent.ToString("R", CultureInfo.InvariantCulture));
+            if (layout == null)
+            {
+                RtpsLog.Error(PartLabel() + ": sectors / rings / centerPercent do not form a valid grid; using the default grid");
+                layout = new ShieldLayout(ShieldLayout.DefaultSectors, ShieldLayout.DefaultRings, ShieldLayout.DefaultCenterPercent);
+            }
+            return layout;
+        }
+
+        private ShieldConstruction HostConstruction()
+        {
+            var construction = new ShieldConstruction
+            {
+                Area = tpsArea,
+                LayerThickness = Math.Max(0.0, material.DesignThickness * thicknessFactor),
+                BackConductance = backConductance,
+                SubstrateHeatCapacity = substrateHeatCapacity,
+                StructureLimitTemp = Math.Max(0.0, structureLimitTemp),
+                CarrierLimitTemp = substrateMaxTemp,
+                BareEmissivity = baseEmissive > 0.0 && baseEmissive <= 1.0 ? baseEmissive : ShieldConstruction.DefaultBareEmissivity
+            };
+            string problem = construction.Problem();
+            if (problem != null)
+            {
+                RtpsLog.Error(PartLabel() + ": host construction: " + problem + "; using defaults where needed");
+                var defaults = new ShieldConstruction();
+                if (!(construction.Area > 0.0))
+                {
+                    construction.Area = 1.0;
+                }
+                if (!(construction.BackConductance > 0.0))
+                {
+                    construction.BackConductance = defaults.BackConductance;
+                }
+                if (!(construction.SubstrateHeatCapacity > 0.0))
+                {
+                    construction.SubstrateHeatCapacity = defaults.SubstrateHeatCapacity;
+                }
+                if (!(construction.CarrierLimitTemp > 0.0))
+                {
+                    construction.CarrierLimitTemp = defaults.CarrierLimitTemp;
+                }
+            }
+            return construction;
         }
 
         /// <summary>
@@ -666,6 +834,17 @@ namespace RealTPS
         }
 
         /// <summary>
+        /// Writes the surface properties of the current state to the part. They are computed from the state at
+        /// the end of a step and act in the engine's next step.
+        /// </summary>
+        private void ApplySurfaceProperties()
+        {
+            part.emissiveConstant = ShieldSolver.Emissivity(material, state);
+            part.skinMaxTemp = ShieldSolver.NativeLimit(material, state);
+            ApplyConduction(ShieldSolver.Conductance(material, state));
+        }
+
+        /// <summary>
         /// Makes the engine conduct from skin to interior like the cells' series conductance. Every engine
         /// factor is read live; when nothing can be derived the part keeps its own multiplier.
         /// </summary>
@@ -724,6 +903,10 @@ namespace RealTPS
                 peakSurfaceTemp = skinTemp;
             }
 
+            Vector3 velocity = (Vector3)vessel.srf_velocity;
+            Vector3 local = part.transform.InverseTransformDirection(velocity);
+            flow = vessel.srfSpeed > 1.0 ? ShieldGeometry.Incidence(frame, local.x, local.y, local.z) : new Incidence();
+
             var input = new ShieldStepInput
             {
                 Dt = dt,
@@ -731,6 +914,7 @@ namespace RealTPS
                 ExposedSkinHeatCapacity = ShieldCoordinator.ExposedSkinCapacity(part),
                 DynamicPressure = part.dynamicPressurekPa * 1000.0,
                 OxygenAtmosphere = InOxygenAtmosphere(),
+                Flow = flow,
             };
             ShieldSolver.Step(material, state, input, result);
 
@@ -747,6 +931,9 @@ namespace RealTPS
         /// <summary>Phase 5: surface properties for the engine's next step, flags, notifications.</summary>
         internal void Finish(double dt)
         {
+            part.emissiveConstant = result.Emissivity;
+            part.skinMaxTemp = result.NativeLimit;
+            ApplyConduction(result.Conductance);
 
             if (result.ShearOverload != tpsShearOverload)
             {
@@ -870,7 +1057,7 @@ namespace RealTPS
             }
             if (active)
             {
-                double surface = material.MaxSurfaceTemp;
+                double surface = flight && state != null ? ShieldSolver.NativeLimit(material, state) : material.MaxSurfaceTemp;
                 uiLimit = surface.ToString("F0", CultureInfo.InvariantCulture) + " K";
             }
 
@@ -1042,6 +1229,7 @@ namespace RealTPS
                 + (legacyMode ? " legacy=stock-rate" : string.Empty)
                 + (tpsDetached && mode == Mode.Active && scene == "flight" ? " detached=true" : string.Empty)
                 + " inventory=" + F(tpsInventory) + "/" + F(tpsCapacity)
+                + (state != null && scene == "flight" ? " grid=" + state.Layout + " cells=" + state.Count + " exposed=" + F(100.0 * tpsExposedArea) + "% failure=" + tpsFailure : string.Empty)
                 + " massDelta=" + F(massDelta * 1000.0) + "kg"
                 + (mode == Mode.Active && scene == "flight" ? " emissive=" + F(part.emissiveConstant) + " skinMaxTemp=" + F(part.skinMaxTemp) + " skinIntMult=" + F(part.skinInternalConductionMult) : string.Empty)
                 + (mode == Mode.Inert ? " reason=\"" + inertReason + "\"" : string.Empty));
@@ -1070,6 +1258,8 @@ namespace RealTPS
                 + " qPa=" + F(part.dynamicPressurekPa * 1000.0)
                 + " emissive=" + F(part.emissiveConstant)
                 + " condMult=" + F(part.skinInternalConductionMult)
+                + " gate=" + F(result.Gate)
+                + " tilt=" + F(flow.Tilt)
                 + " shear=" + (tpsShearOverload ? "1" : "0"));
         }
     }

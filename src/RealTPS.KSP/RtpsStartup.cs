@@ -144,6 +144,19 @@ namespace RealTPS
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, reason);
             }
+            if (RealTPS.Core.Shield.ShieldLayout.Parse(module.sectors.ToString(System.Globalization.CultureInfo.InvariantCulture) + ","
+                + module.rings.ToString(System.Globalization.CultureInfo.InvariantCulture) + ","
+                + module.centerPercent.ToString("R", System.Globalization.CultureInfo.InvariantCulture)) == null)
+            {
+                return Localizer.Format("#LOC_RTPS_startup_host", name, "sectors / rings / centerPercent do not form a valid grid");
+            }
+            double[] normal, tangent;
+            if (!RealTPS.Core.Shield.ShieldGeometry.TryParseVector(module.protectedFace, out normal)
+                || !RealTPS.Core.Shield.ShieldGeometry.TryParseVector(module.sectorZero, out tangent)
+                || !RealTPS.Core.Shield.ShieldGeometry.IsUsableFrame(normal, tangent))
+            {
+                return Localizer.Format("#LOC_RTPS_startup_host", name, "protectedFace / sectorZero are not a usable face frame");
+            }
             if (AssemblyLoaded("B9PartSwitch") && B9SwitcherProxy.Find(prefab, module.switcherModuleId) == null)
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, "no ModuleB9PartSwitch with moduleID '" + module.switcherModuleId + "'");
