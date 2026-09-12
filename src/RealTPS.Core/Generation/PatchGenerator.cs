@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text;
 using RealTPS.Core.Hosts;
 using RealTPS.Core.Materials;
+using RealTPS.Core.Shield;
 
 namespace RealTPS.Core.Generation
 {
@@ -169,6 +170,11 @@ namespace RealTPS.Core.Generation
             Line(sb, 2, "tpsArea", F(host.Area));
             Line(sb, 2, "thicknessFactor", F(host.ThicknessFactor));
             Line(sb, 2, "includedDryArealDensity", F(host.IncludedDryArealDensity));
+            Line(sb, 2, "sectors", host.Sectors.ToString(CultureInfo.InvariantCulture));
+            Line(sb, 2, "rings", host.Rings.ToString(CultureInfo.InvariantCulture));
+            Line(sb, 2, "centerPercent", F(host.CenterPercent));
+            Line(sb, 2, "protectedFace", ShieldGeometry.FormatVector(host.ProtectedFace));
+            Line(sb, 2, "sectorZero", ShieldGeometry.FormatVector(host.SectorZero));
             Line(sb, 2, "ownsConductivity", host.OwnsConductivity ? "true" : "false");
             Line(sb, 2, "legacyAblatorCapacity", F(host.ReplacesStockAblator ? host.StockAblator : 0.0));
             Line(sb, 2, "charModuleName", host.CharModuleName);

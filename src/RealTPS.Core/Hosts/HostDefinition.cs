@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using RealTPS.Core.Cfg;
 using RealTPS.Core.Materials;
+using RealTPS.Core.Shield;
 
 namespace RealTPS.Core.Hosts
 {
@@ -60,6 +61,18 @@ namespace RealTPS.Core.Hosts
         /// <summary>Human-readable part title used in generated comments.</summary>
         public string Title = string.Empty;
 
+        // ----- protected face and its grid -----
+
+        public int Sectors = ShieldLayout.DefaultSectors;
+        public int Rings = ShieldLayout.DefaultRings;
+        public double CenterPercent = ShieldLayout.DefaultCenterPercent;
+
+        /// <summary>Outward normal of the protected face, part coordinates.</summary>
+        public double[] ProtectedFace = { 0.0, -1.0, 0.0 };
+
+        /// <summary>Direction on the face towards the middle of sector zero, part coordinates.</summary>
+        public double[] SectorZero = { 1.0, 0.0, 0.0 };
+
         private static readonly Regex TokenPattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
         private static readonly Regex PartPattern = new Regex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant);
 
@@ -108,6 +121,7 @@ namespace RealTPS.Core.Hosts
                 issues.Add(new ValidationIssue(true, subject, "includedDryArealDensity must be zero or positive"));
             }
             host.OwnsConductivity = !string.Equals((node.GetValue("ownsConductivity") ?? "true").Trim(), "false", StringComparison.OrdinalIgnoreCase);
+            ParseGeometry(node, host, issues, subject);
             host.ReplacesStockAblator = string.Equals((node.GetValue("replacesStockAblator") ?? "false").Trim(), "true", StringComparison.OrdinalIgnoreCase);
 
             if (host.Materials.Count == 0)
@@ -123,6 +137,44 @@ namespace RealTPS.Core.Hosts
                 }
             }
             return CountErrors(issues) == before ? host : null;
+        }
+
+        private static void ParseGeometry(CfgNode node, HostDefinition host, List<ValidationIssue> issues, string subject)
+        {
+            double sectors = host.Sectors;
+            double rings = host.Rings;
+            if ((node.HasValue("sectors") && !node.TryGetDouble("sectors", out sectors))
+                || (node.HasValue("rings") && !node.TryGetDouble("rings", out rings))
+                || (node.HasValue("centerPercent") && !node.TryGetDouble("centerPercent", out host.CenterPercent))
+                || sectors != Math.Floor(sectors) || rings != Math.Floor(rings)
+                || ShieldLayout.Parse(Compatibility.Format(sectors, "0") + "," + Compatibility.Format(rings, "0") + "," + Compatibility.Format(host.CenterPercent, "R")) == null)
+            {
+                issues.Add(new ValidationIssue(true, subject, "sectors (" + ShieldLayout.MinSectors + "-" + ShieldLayout.MaxSectors + "), rings (0-" + ShieldLayout.MaxRings + ") and centerPercent (0-100) do not form a valid grid"));
+            }
+            else
+            {
+                host.Sectors = (int)sectors;
+                host.Rings = (int)rings;
+            }
+
+            if (node.HasValue("protectedFace") && !ShieldGeometry.TryParseVector(node.GetValue("protectedFace"), out host.ProtectedFace))
+            {
+                issues.Add(new ValidationIssue(true, subject, "protectedFace must be three numbers 'x, y, z'"));
+            }
+            if (node.HasValue("sectorZero") && !ShieldGeometry.TryParseVector(node.GetValue("sectorZero"), out host.SectorZero))
+            {
+                issues.Add(new ValidationIssue(true, subject, "sectorZero must be three numbers 'x, y, z'"));
+            }
+            if (host.ProtectedFace != null && host.SectorZero != null && !ShieldGeometry.IsUsableFrame(host.ProtectedFace, host.SectorZero))
+            {
+                issues.Add(new ValidationIssue(true, subject, "protectedFace must be a non-zero direction and sectorZero must not be parallel to it"));
+            }
+        }
+
+        /// <summary>The grid of the protected face.</summary>
+        public ShieldLayout Layout()
+        {
+            return new ShieldLayout(Sectors, Rings, CenterPercent);
         }
 
         /// <summary>Consumable inventory of a material on this host, kg.</summary>
