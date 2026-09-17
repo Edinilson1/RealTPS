@@ -3,6 +3,30 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.13.0 for KSP 1.12.x
+
+ - 2026-09-16
+
+### Changes since the previous version
+
+* Added: Cells. The face of each shield is split into cells: 25 on the stock parts, a centre disc and three rings
+  of eight. Each cell keeps its own material, char and the heat it has received.
+* Added: Uneven wear. The heat is spread over the cells by a calibrated profile, more at the centre and on the side
+  facing into the flow, so a tilted shield wears out on one side first. With every cell full the total is the same
+  as before, and an empty cell never draws material from another.
+* Added: A shield keeps the grid and the construction it was launched with: a later change to the part config never
+  reshapes a shield in flight. A stored cell state that can't be read leaves the shield INACTIVE and is saved back
+  unchanged.
+* Changed: Conduction into the part is worked out cell by cell.
+* Changed: Vessels in the legacy stock-rate mode keep a single whole-face cell.
+* Added: Telemetry fields `tilt` and `gate`.
+* Optimized: A physics step allocates nothing: each shield reuses its step result.
+
+### For Modders
+
+* Host fields `sectors`, `rings`, `centerPercent`, `protectedFace` and `sectorZero`. The cell state is saved as
+  `RTPS_SHIELD_STATE` (version 1), next to the profile snapshot.
+
 ## v0.12.0 for KSP 1.12.x
 
  - 2026-08-27
