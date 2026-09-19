@@ -77,6 +77,32 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void TheGateIsAnActivityMeasureThatClosesInTheLee()
+        {
+            // Radiated: 0.8 * 5.67e-8 * 1500^4 * 2 m2 = about 459 kW.
+            Assert.Equal(1.0, ShieldWeights.Gate(1.0e6, 0.8, 1500.0, 2.0, 1.0));
+            Assert.InRange(ShieldWeights.Gate(2.0e5, 0.8, 1500.0, 2.0, 1.0), 0.40, 0.47);
+            Assert.Equal(0.0, ShieldWeights.Gate(0.0, 0.8, 1500.0, 2.0, 1.0));
+            Assert.Equal(0.0, ShieldWeights.Gate(-5.0, 0.8, 1500.0, 2.0, 1.0));
+            // Positive whole-part heating does not show that the protected face is windward.
+            Assert.Equal(0.0, ShieldWeights.Gate(1.0e6, 0.8, 1500.0, 2.0, 0.0));
+            Assert.Equal(0.0, ShieldWeights.Gate(1.0e6, 0.8, 1500.0, 2.0, -0.7));
+            Assert.Equal(0.5, ShieldWeights.Gate(1.0e6, 0.8, 1500.0, 2.0, 0.1), 12);
+            // Guards.
+            Assert.Equal(0.0, ShieldWeights.Gate(1.0e6, 0.0, 1500.0, 2.0, 1.0));
+            Assert.Equal(0.0, ShieldWeights.Gate(1.0e6, 0.8, double.NaN, 2.0, 1.0));
+            Assert.Equal(0.0, ShieldWeights.Gate(double.NaN, 0.8, 1500.0, 2.0, 1.0));
+            Assert.Equal(0.0, ShieldWeights.Gate(1.0e6, 0.8, 1500.0, 0.0, 1.0));
+
+            var w = new[] { 0.5, 1.5, 1.0 };
+            ShieldWeights.ApplyGate(w, 3, 0.0);
+            Assert.Equal(new[] { 1.0, 1.0, 1.0 }, w);
+            w = new[] { 0.5, 1.5, 1.0 };
+            ShieldWeights.ApplyGate(w, 3, 0.5);
+            Assert.Equal(new[] { 0.75, 1.25, 1.0 }, w);
+        }
+
+        [Fact]
         public void IncidenceFollowsTheFaceFrame()
         {
             FaceFrame frame;
@@ -327,6 +353,52 @@ namespace RealTPS.Core.Tests
             Assert.True(result.ShearErodedMass > 0.0 && result.ShearOverload);
             Assert.Equal(0.0, ablator.TotalPyrolysed);
             Assert.Equal(m.Emissivity, result.Emissivity, 12);
+        }
+
+        [Fact]
+        public void TurningTheCraftWithoutHeatingChangesNothing()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState a = Stocked(m);
+            ShieldState b = Stocked(m);
+            var ra = new ShieldStepResult(a.Count);
+            var rb = new ShieldStepResult(b.Count);
+            for (int step = 0; step < 200; step++)
+            {
+                ShieldStepInput ia = Input(1400.0, 0.02, 0.0, 0.0);
+                ShieldStepInput ib = Input(1400.0, 0.02, 0.0, 0.9);
+                ib.Flow.Azimuth = step * 0.3;                       // tumbling
+                ShieldSolver.Step(m, a, ia, ra);
+                ShieldSolver.Step(m, b, ib, rb);
+            }
+            for (int i = 0; i < a.Count; i++)
+            {
+                Assert.Equal(a.Inventory[i], b.Inventory[i]);
+                Assert.Equal(a.SubstrateTemp[i], b.SubstrateTemp[i]);
+                Assert.Equal(a.Integrity[i], b.Integrity[i]);
+                Assert.Equal(1.0, rb.Weights[i]);
+            }
+            Assert.True(a.TotalInventory < a.TotalCapacity);        // it is still hot: consumption goes on, uniformly
+        }
+
+        [Fact]
+        public void NoSpatialModulationWithTheFaceTurnedAway()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            state.Inventory[4] = 0.0;
+            var result = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1500.0, 0.02, 5.0e6, 0.6);
+            input.Flow.Facing = -0.8;
+            ShieldSolver.Step(m, state, input, result);
+            Assert.Equal(0.0, result.Gate);
+            for (int i = 0; i < state.Count; i++)
+            {
+                Assert.Equal(1.0, result.Weights[i]);
+                Assert.Equal(1.0, result.Windward[i]);
+            }
+            Assert.True(result.PyrolysedMass > 0.0);                // the lumped consumption is untouched
+            Assert.Equal(0.0, result.BreachTotal);                  // and nothing leaks through a face in the lee
         }
 
         [Fact]

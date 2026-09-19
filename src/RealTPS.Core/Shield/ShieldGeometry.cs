@@ -152,6 +152,8 @@ namespace RealTPS.Core.Shield
         /// <summary>Strength of the windward bias at full tilt.</summary>
         public const double TiltGain = 0.8;
 
+        private const double StefanBoltzmann = 5.670374419e-8;
+
         /// <summary>
         /// Fills <paramref name="heat"/> (radial profile times windward bias) and <paramref name="windward"/>
         /// (windward bias alone). Both are normalised to an area-weighted mean of 1.
@@ -195,6 +197,43 @@ namespace RealTPS.Core.Shield
             {
                 heat[i] /= heatMean;
                 windward[i] /= windMean;
+            }
+        }
+
+        /// <summary>
+        /// How much of the spatial modulation applies, 0..1: an activity heuristic (the whole part's
+        /// convective power over what the protected face radiates) times a factor that removes all modulation
+        /// when the face looks away from the flow.
+        /// </summary>
+        public static double Gate(double convectivePower, double emissivity, double skinTemp, double area, double facing)
+        {
+            if (double.IsNaN(convectivePower) || convectivePower <= 0.0 || double.IsNaN(facing) || facing <= 0.0)
+            {
+                return 0.0;
+            }
+            double radiated = emissivity * StefanBoltzmann * skinTemp * skinTemp * skinTemp * skinTemp * area;
+            if (double.IsNaN(radiated) || double.IsInfinity(radiated) || radiated <= 0.0)
+            {
+                return 0.0;
+            }
+            double activity = Math.Min(1.0, convectivePower / radiated);
+            return activity * Math.Min(1.0, 5.0 * facing);
+        }
+
+        /// <summary>Replaces each weight by <c>1 + gate * (w - 1)</c>. The mean stays 1.</summary>
+        public static void ApplyGate(double[] weights, int count, double gate)
+        {
+            if (double.IsNaN(gate) || gate < 0.0)
+            {
+                gate = 0.0;
+            }
+            if (gate > 1.0)
+            {
+                gate = 1.0;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                weights[i] = 1.0 + gate * (weights[i] - 1.0);
             }
         }
     }

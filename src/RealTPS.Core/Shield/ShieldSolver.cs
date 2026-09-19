@@ -22,6 +22,9 @@ namespace RealTPS.Core.Shield
         /// <summary>True when the surrounding atmosphere contains oxygen.</summary>
         public bool OxygenAtmosphere;
 
+        /// <summary>Convective power the engine put into the part, W. Zero or negative when it is not heating.</summary>
+        public double ConvectivePower;
+
         /// <summary>How the flow meets the protected face.</summary>
         public Incidence Flow;
     }
@@ -40,6 +43,9 @@ namespace RealTPS.Core.Shield
         public double HeatAbsorbed;
 
         public bool ShearOverload;
+
+        /// <summary>The weight modulation of the airflow in use, 0..1.</summary>
+        public double Gate;
 
         /// <summary>
         /// Heat weight per cell, area-weighted mean 1: the gated airflow weights and the gated jet weights,
@@ -81,7 +87,7 @@ namespace RealTPS.Core.Shield
 
         internal void Reset(int cells)
         {
-            PyrolysedMass = ShearErodedMass = OxidisedMass = HeatAbsorbed = 0.0;
+            PyrolysedMass = ShearErodedMass = OxidisedMass = HeatAbsorbed = Gate = 0.0;
             ShearOverload = false;
             for (int i = 0; i < cells; i++)
             {
@@ -139,12 +145,17 @@ namespace RealTPS.Core.Shield
             double area = construction.Area;
             double capacity = Usable(input.ExposedSkinHeatCapacity) ? input.ExposedSkinHeatCapacity : 0.0;
             double skin = input.SkinTemp;
+            double power = Usable(input.ConvectivePower) ? input.ConvectivePower : 0.0;
             bool consumable = material.HasConsumable;
 
             // ----- weights -----
             double[] w = result.Weights;
             double[] wind = result.Windward;
+            double emissivity = Emissivity(material, state);
             ShieldWeights.Compute(layout, input.Flow.Defined ? input.Flow.Tilt : 0.0, input.Flow.Azimuth, w, wind);
+            result.Gate = ShieldWeights.Gate(power, emissivity, skin, area, input.Flow.Defined ? input.Flow.Facing : 0.0);
+            ShieldWeights.ApplyGate(w, n, result.Gate);
+            ShieldWeights.ApplyGate(wind, n, result.Gate);
 
             // ----- consumption: one rate law at the skin temperature, allocated by weight, until each cell's first event -----
             if (consumable && !state.Failed && Usable(area))

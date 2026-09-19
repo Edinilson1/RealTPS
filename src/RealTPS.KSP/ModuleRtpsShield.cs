@@ -914,6 +914,7 @@ namespace RealTPS
                 ExposedSkinHeatCapacity = ShieldCoordinator.ExposedSkinCapacity(part),
                 DynamicPressure = part.dynamicPressurekPa * 1000.0,
                 OxygenAtmosphere = InOxygenAtmosphere(),
+                ConvectivePower = part.thermalConvectionFlux * 1000.0,
                 Flow = flow,
             };
             ShieldSolver.Step(material, state, input, result);
