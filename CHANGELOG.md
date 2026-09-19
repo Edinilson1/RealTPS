@@ -3,6 +3,15 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.13.1 for KSP 1.12.x
+
+ - 2026-09-19
+
+### Changes since the previous version
+
+* Changed: The uneven wear only applies while the shield is really being heated and faces the flow: turning the
+  craft without heating, or flying with the face in the lee, changes nothing.
+
 ## v0.13.0 for KSP 1.12.x
 
  - 2026-09-16
