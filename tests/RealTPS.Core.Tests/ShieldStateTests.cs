@@ -49,6 +49,22 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void ThicknessComesFromTheInventoryOrFromTheConstruction()
+        {
+            MaterialDefinition ablator = TestMaterials.Ablator();   // 500 kg/m3
+            ShieldState state = ShieldState.Uniform(new ShieldLayout(8, 2, 2.0), Construction(2.0), 500.0 * 0.04 * 2.0, 500.0 * 0.05 * 2.0, 0.0);
+            for (int i = 0; i < state.Count; i++)
+            {
+                Assert.Equal(0.04, state.Thickness(i, ablator), 12);
+            }
+            state.Inventory[4] *= 0.5;
+            Assert.Equal(0.02, state.Thickness(4, ablator), 12);
+
+            ShieldState tile = ShieldState.Uniform(new ShieldLayout(8, 2, 2.0), Construction(2.0, 0.06), 0.0, 0.0, 0.0);
+            Assert.Equal(0.06, tile.Thickness(0, TestMaterials.Tile()), 12);
+        }
+
+        [Fact]
         public void RoundTripsThroughItsNodeWithItsGridAndConstruction()
         {
             ShieldState original = Sample();

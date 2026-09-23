@@ -13,6 +13,9 @@ namespace RealTPS.Core.Shield
         /// <summary>Temperature of the exposed skin, K.</summary>
         public double SkinTemp;
 
+        /// <summary>Internal temperature of the part, K.</summary>
+        public double InternalTemp;
+
         /// <summary>Heat capacity of the exposed skin, J/K.</summary>
         public double ExposedSkinHeatCapacity;
 
@@ -107,6 +110,12 @@ namespace RealTPS.Core.Shield
     public static class ShieldSolver
     {
 
+        /// <summary>Contact conductance between the skin node and what lies under it, W/(m^2 K). Calibration.</summary>
+        public const double ContactConductance = 200.0;
+
+        /// <summary>Below this thickness the layer is a massless branch: its node is not integrated, m.</summary>
+        public const double NodeCutoff = 1.0e-5;
+
         /// <summary>
         /// Advances a shield by one step. Invalid inputs (NaN, infinity, a non-positive step or temperature)
         /// change nothing: the solver never invents cooling or damage from bad data. Steps longer than
@@ -145,8 +154,10 @@ namespace RealTPS.Core.Shield
             double area = construction.Area;
             double capacity = Usable(input.ExposedSkinHeatCapacity) ? input.ExposedSkinHeatCapacity : 0.0;
             double skin = input.SkinTemp;
+            double interior = Usable(input.InternalTemp) ? input.InternalTemp : skin;
             double power = Usable(input.ConvectivePower) ? input.ConvectivePower : 0.0;
             bool consumable = material.HasConsumable;
+            bool layered = material.HasLayerModel;
 
             // ----- weights -----
             double[] w = result.Weights;
@@ -157,10 +168,36 @@ namespace RealTPS.Core.Shield
             ShieldWeights.ApplyGate(w, n, result.Gate);
             ShieldWeights.ApplyGate(wind, n, result.Gate);
 
+            if (layered && !state.ThermalInitialised)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    state.LayerTemp[i] = interior;
+                    state.SubstrateTemp[i] = interior;
+                }
+                state.ThermalInitialised = true;
+            }
+
             // ----- consumption: one rate law at the skin temperature, allocated by weight, until each cell's first event -----
             if (consumable && !state.Failed && Usable(area))
             {
                 Consume(material, state, input, result, dt, area, capacity, skin);
+            }
+
+            if (layered)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    double protectedTime = dt * fraction;
+                    double exposedTime = dt - protectedTime;
+                    if (protectedTime > 0.0)
+                    {
+                        double thickness = consumable
+                            ? Thickness(material, 0.5 * (result.StartInventory[i] + atEvent), state.CellArea(i))
+                            : construction.LayerThickness;
+                        ObserveProtected(material, construction, thickness, protectedTime, skin, interior, ref state.LayerTemp[i], ref state.SubstrateTemp[i]);
+                    }
+                }
             }
 
             FillSurface(material, state, result);
@@ -240,6 +277,51 @@ namespace RealTPS.Core.Shield
         private static double Sane(double value)
         {
             return double.IsNaN(value) || double.IsInfinity(value) || value < 0.0 ? 0.0 : value;
+        }
+
+        // ----- the observer -----
+
+        /// <summary>
+        /// Backward-Euler step of a protected cell: a layer node and a substrate node between the skin
+        /// temperature and the interior. The skin reaches the layer node through <c>L/(2k) + 1/h_x</c> and the
+        /// layer node reaches the substrate through <c>L/(2k)</c>. Below <see cref="NodeCutoff"/> the layer is
+        /// a massless branch of resistance <c>L/k + 1/h_x</c>: only the node is dropped, not the layer.
+        /// </summary>
+        public static void ObserveProtected(MaterialDefinition material, ShieldConstruction construction, double thickness, double dt,
+            double skin, double interior, ref double layer, ref double substrate)
+        {
+            double k = material.Conductivity;
+            double back = construction.BackConductance;
+            double substrateCapacity = construction.SubstrateHeatCapacity / dt;
+            if (!(thickness >= NodeCutoff))
+            {
+                double length = thickness > 0.0 ? thickness : 0.0;
+                double g = 1.0 / (length / k + 1.0 / ContactConductance);
+                substrate = (substrateCapacity * substrate + g * skin + back * interior) / (substrateCapacity + g + back);
+                layer = substrate + (skin - substrate) * (length / (2.0 * k)) * g;
+                return;
+            }
+            double layerCapacity = material.Density * material.SpecificHeat * thickness / dt;
+            double g1 = 1.0 / (thickness / (2.0 * k) + 1.0 / ContactConductance);
+            double g2 = 2.0 * k / thickness;
+            double a11 = layerCapacity + g1 + g2;
+            double a22 = substrateCapacity + g2 + back;
+            double b1 = layerCapacity * layer + g1 * skin;
+            double b2 = substrateCapacity * substrate + back * interior;
+            double det = a11 * a22 - g2 * g2;
+            double newLayer = (b1 * a22 + g2 * b2) / det;
+            double newSubstrate = (a11 * b2 + g2 * b1) / det;
+            layer = newLayer;
+            substrate = newSubstrate;
+        }
+
+        /// <summary>Backward-Euler step of an exposed cell: the substrate between the skin (contact conductance) and the interior.</summary>
+        public static void ObserveExposed(ShieldConstruction construction, double dt, double skin, double interior, ref double layer, ref double substrate)
+        {
+            double capacity = construction.SubstrateHeatCapacity / dt;
+            substrate = (capacity * substrate + ContactConductance * skin + construction.BackConductance * interior)
+                / (capacity + ContactConductance + construction.BackConductance);
+            layer = skin;
         }
 
         // ----- surface properties and conduction -----
@@ -336,6 +418,11 @@ namespace RealTPS.Core.Shield
             result.Emissivity = Emissivity(material, state);
             result.NativeLimit = NativeLimit(material, state);
             result.Conductance = Conductance(material, state);
+        }
+
+        private static double Thickness(MaterialDefinition material, double inventory, double cellArea)
+        {
+            return cellArea > 0.0 && material.Density > 0.0 ? Math.Max(0.0, inventory) / (material.Density * cellArea) : 0.0;
         }
 
         /// <summary>Finite and strictly positive.</summary>

@@ -161,6 +161,12 @@ namespace RealTPS.Core.Materials
             get { return Ablation != null ? Ablation.Resource : (Erosion != null ? Erosion.Resource : null); }
         }
 
+        /// <summary>True when the profile carries what the layer observer and the damage model need.</summary>
+        public bool HasLayerModel
+        {
+            get { return Conductivity > 0.0; }
+        }
+
         /// <summary>Consumable mass per unit protected area, kg/m^2 (0 for non-consumable materials).</summary>
         public double ConsumableArealDensity
         {

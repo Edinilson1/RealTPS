@@ -426,6 +426,75 @@ namespace RealTPS.Core.Tests
 
         // ----- observer -----
 
+        [Fact]
+        public void TheObserverSettlesOnTheSeriesResistance()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();         // k = 0.2
+            var c = new ShieldConstruction { Area = 1.0 };
+            double layer = 300.0, substrate = 300.0;
+            const double thickness = 0.03;
+            for (int i = 0; i < 400000; i++)
+            {
+                ShieldSolver.ObserveProtected(m, c, thickness, 0.5, 1500.0, 300.0, ref layer, ref substrate);
+            }
+            double g = 1.0 / (thickness / m.Conductivity + 1.0 / ShieldSolver.ContactConductance);
+            double expected = (g * 1500.0 + c.BackConductance * 300.0) / (g + c.BackConductance);
+            Assert.Equal(expected, substrate, 6);
+            Assert.InRange(layer, substrate, 1500.0);
+        }
+
+        [Fact]
+        public void ALayerThinnerThanTheNodeCutoffIsStillALayer()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            double cell = state.CellArea(5);
+            state.Inventory[5] = m.Density * cell * 5.0e-6;         // 5 micrometres left
+            var result = new ShieldStepResult(state.Count);
+            ShieldSolver.Step(m, state, Input(500.0), result);      // below onset: nothing is consumed
+            Assert.False(state.IsExposed(5, true));
+            Assert.Equal(0.0, result.ExposedTime[5]);
+            Assert.Equal(1.0, state.Integrity[5]);
+            AssertFinite(state, result);
+            // Its share of the conductance is the series value with its own thickness, not the exposed one.
+            double own = state.Layout.AreaFraction(5) / (5.0e-6 / m.Conductivity + 1.0 / ShieldSolver.ContactConductance + 1.0 / state.Construction.BackConductance);
+            double rest = 0.0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                if (i != 5)
+                {
+                    rest += state.Layout.AreaFraction(i) / (state.Thickness(i, m) / m.Conductivity + 1.0 / ShieldSolver.ContactConductance + 1.0 / state.Construction.BackConductance);
+                }
+            }
+            Assert.Equal(own + rest, result.Conductance, 12);
+        }
+
+        [Fact]
+        public void TheBondKeepsHeatingAfterThePulse()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m, null, 0.15);             // a thin layer
+            var result = new ShieldStepResult(state.Count);
+            double peak = 0.0, peakTime = 0.0, time = 0.0;
+            const double pulse = 60.0;
+            for (int i = 0; i < 20000; i++)
+            {
+                double skin = time < pulse ? 1400.0 : 300.0 + 1100.0 * Math.Exp(-(time - pulse) / 40.0);
+                ShieldStepInput input = Input(skin, 0.05, time < pulse ? 3.0e6 : 0.0);
+                input.Settings.Damage = false;
+                input.InternalTemp = 300.0;
+                ShieldSolver.Step(m, state, input, result);
+                time += 0.05;
+                if (state.SubstrateTemp[0] > peak)
+                {
+                    peak = state.SubstrateTemp[0];
+                    peakTime = time;
+                }
+            }
+            Assert.True(peakTime > pulse + 5.0, "the substrate should peak after the heat pulse, peaked at " + peakTime);
+            Assert.True(peak > 320.0);
+        }
+
         // ----- damage -----
 
         // ----- exposure, leak, failure -----

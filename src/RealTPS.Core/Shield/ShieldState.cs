@@ -139,6 +139,9 @@ namespace RealTPS.Core.Shield
         /// <summary>Estimated temperature of the substrate at the bond, K.</summary>
         public readonly double[] SubstrateTemp;
 
+        /// <summary>False until the layer temperatures have been set from the part once.</summary>
+        public bool ThermalInitialised;
+
         public ShieldState(ShieldLayout layout, ShieldConstruction construction)
         {
             if (layout == null)
@@ -251,6 +254,7 @@ namespace RealTPS.Core.Shield
             node.AddValue("integrity", Pack(Integrity));
             node.AddValue("layerTemp", Pack(LayerTemp));
             node.AddValue("substrateTemp", Pack(SubstrateTemp));
+            node.AddValue("thermalInitialised", ThermalInitialised ? "true" : "false");
             return node;
         }
 
@@ -316,6 +320,12 @@ namespace RealTPS.Core.Shield
                 & Unpack(node, "layerTemp", result.LayerTemp, 0.0, 1.0e5, issues)
                 & Unpack(node, "substrateTemp", result.SubstrateTemp, 0.0, 1.0e5, issues);
 
+            string initialised = (node.GetValue("thermalInitialised") ?? string.Empty).Trim();
+            if (initialised != "true" && initialised != "false")
+            {
+                issues.Add(new ValidationIssue(true, "shield state", "thermalInitialised must be true or false"));
+                ok = false;
+            }
             if (!ok)
             {
                 return ReadStatus.Invalid;
@@ -329,6 +339,7 @@ namespace RealTPS.Core.Shield
                 }
                 result.Inventory[i] = Math.Min(result.Inventory[i], result.Capacity[i]);
             }
+            result.ThermalInitialised = initialised == "true";
             state = result;
             return ReadStatus.Ok;
         }

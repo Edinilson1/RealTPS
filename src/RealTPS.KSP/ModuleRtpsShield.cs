@@ -911,6 +911,7 @@ namespace RealTPS
             {
                 Dt = dt,
                 SkinTemp = skinTemp,
+                InternalTemp = part.temperature,
                 ExposedSkinHeatCapacity = ShieldCoordinator.ExposedSkinCapacity(part),
                 DynamicPressure = part.dynamicPressurekPa * 1000.0,
                 OxygenAtmosphere = InOxygenAtmosphere(),
