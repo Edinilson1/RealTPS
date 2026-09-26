@@ -204,6 +204,20 @@ namespace RealTPS.Core.Shield
             get { return Sum(Pyrolysed); }
         }
 
+        /// <summary>Area-weighted mean integrity.</summary>
+        public double MeanIntegrity
+        {
+            get
+            {
+                double sum = 0.0;
+                for (int i = 0; i < Count; i++)
+                {
+                    sum += Integrity[i] * Layout.AreaFraction(i);
+                }
+                return sum;
+            }
+        }
+
         /// <summary>Remaining share of the cell's consumable, 0..1; 1 when the cell never had one.</summary>
         public double Fraction(int cell)
         {

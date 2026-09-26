@@ -42,6 +42,9 @@ namespace RealTPS.Core.Shield
         public double ShearErodedMass;
         public double OxidisedMass;
 
+        /// <summary>Inventory dropped by cells that lost their integrity, without cooling.</summary>
+        public double ShedMass;
+
         /// <summary>Energy removed from the exposed skin by pyrolysis, J. The single sink of the step.</summary>
         public double HeatAbsorbed;
 
@@ -70,6 +73,9 @@ namespace RealTPS.Core.Shield
         /// <summary>Target conductance from skin to interior over the protected area, W/(m^2 K); 0 = none derived.</summary>
         public double Conductance;
 
+        internal readonly double[] StartInventory;
+        internal readonly double[] ProtectedFraction;
+        internal readonly double[] DamageRate;
         internal readonly double[] PyrolysisDemand;
         internal readonly double[] ShearDemand;
         internal readonly double[] OxidationDemand;
@@ -78,6 +84,9 @@ namespace RealTPS.Core.Shield
         {
             Weights = new double[cells];
             Windward = new double[cells];
+            StartInventory = new double[cells];
+            ProtectedFraction = new double[cells];
+            DamageRate = new double[cells];
             PyrolysisDemand = new double[cells];
             ShearDemand = new double[cells];
             OxidationDemand = new double[cells];
@@ -85,17 +94,18 @@ namespace RealTPS.Core.Shield
 
         public double ConsumedMass
         {
-            get { return PyrolysedMass + ShearErodedMass + OxidisedMass; }
+            get { return PyrolysedMass + ShearErodedMass + OxidisedMass + ShedMass; }
         }
 
         internal void Reset(int cells)
         {
-            PyrolysedMass = ShearErodedMass = OxidisedMass = HeatAbsorbed = Gate = 0.0;
+            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = Gate = 0.0;
             ShearOverload = false;
             for (int i = 0; i < cells; i++)
             {
                 Weights[i] = 1.0;
                 Windward[i] = 1.0;
+                ProtectedFraction[i] = 1.0;
             }
         }
     }
@@ -109,12 +119,32 @@ namespace RealTPS.Core.Shield
     /// </summary>
     public static class ShieldSolver
     {
+        /// <summary>Time for surface deterioration to destroy a cell held at the native fallback, s. Calibration.</summary>
+        public const double SurfaceDamageTime = 8.0;
+
+        /// <summary>Time for a bond held at its limit to fail, s. Calibration.</summary>
+        public const double BondDamageTime = 60.0;
+
+        /// <summary>Arrhenius temperature of bond degradation, K. Calibration.</summary>
+        public const double BondActivationTemp = 12000.0;
+
+        /// <summary>Bond degradation ramps in from this far below the limit, K.</summary>
+        public const double BondRampStart = 100.0;
+
+        /// <summary>... and is at full strength this far below it, K.</summary>
+        public const double BondRampEnd = 50.0;
+
+        /// <summary>Largest factor by which the bond rate may exceed its value at the limit.</summary>
+        public const double BondRateCap = 50.0;
 
         /// <summary>Contact conductance between the skin node and what lies under it, W/(m^2 K). Calibration.</summary>
         public const double ContactConductance = 200.0;
 
         /// <summary>Below this thickness the layer is a massless branch: its node is not integrated, m.</summary>
         public const double NodeCutoff = 1.0e-5;
+
+        /// <summary>Surface deterioration is not extrapolated beyond this multiple of the damage span.</summary>
+        public const double SurfaceOvershootCap = 2.0;
 
         /// <summary>
         /// Advances a shield by one step. Invalid inputs (NaN, infinity, a non-positive step or temperature)
@@ -178,6 +208,27 @@ namespace RealTPS.Core.Shield
                 state.ThermalInitialised = true;
             }
 
+            // ----- the moment each cell would give way, from the damage rates at the start of the step -----
+            double bondLimit = construction.BondLimit(material);
+            for (int i = 0; i < n; i++)
+            {
+                result.StartExposed[i] = state.IsExposed(i, consumable);
+                result.StartInventory[i] = state.Inventory[i];
+                result.DamageRate[i] = 0.0;
+                double fraction = result.StartExposed[i] ? 0.0 : 1.0;
+                if (layered && !result.StartExposed[i] && settings.Damage)
+                {
+                    double bias = CellBias(state.Seed, i, settings.CellVariation);
+                    double rate = (SurfaceRate(material, skin, w[i], bias, surfaceTime) + BondRate(bondLimit * bias, state.SubstrateTemp[i], bondTime)) * Math.Max(0.0, settings.Severity);
+                    if (rate > 0.0 && !double.IsInfinity(rate))
+                    {
+                        result.DamageRate[i] = rate;
+                        fraction = Math.Min(1.0, state.Integrity[i] / (rate * dt));
+                    }
+                }
+                result.ProtectedFraction[i] = fraction;
+            }
+
             // ----- consumption: one rate law at the skin temperature, allocated by weight, until each cell's first event -----
             if (consumable && !state.Failed && Usable(area))
             {
@@ -186,8 +237,29 @@ namespace RealTPS.Core.Shield
 
             if (layered)
             {
+                // ----- damage up to the first event; a cell that gives way sheds what it still holds -----
                 for (int i = 0; i < n; i++)
                 {
+                    double fraction = result.ProtectedFraction[i];
+                    double rate = result.DamageRate[i];
+                    // What the cell held until its event: the protected part of the step sees this layer, not
+                    // what is left after shedding.
+                    double atEvent = state.Inventory[i];
+                    if (rate > 0.0)
+                    {
+                        double integrity = state.Integrity[i] - rate * dt * fraction;
+                        if (integrity <= 1.0e-12)
+                        {
+                            state.Integrity[i] = 0.0;
+                            result.ShedMass += state.Inventory[i];
+                            state.Inventory[i] = 0.0;
+                        }
+                        else
+                        {
+                            state.Integrity[i] = integrity;
+                        }
+                    }
+
                     double protectedTime = dt * fraction;
                     double exposedTime = dt - protectedTime;
                     if (protectedTime > 0.0)
@@ -322,6 +394,63 @@ namespace RealTPS.Core.Shield
             substrate = (capacity * substrate + ContactConductance * skin + construction.BackConductance * interior)
                 / (capacity + ContactConductance + construction.BackConductance);
             layer = skin;
+        }
+
+        // ----- damage laws -----
+
+        /// <summary>
+        /// Rate at which the surface of a cell deteriorates, 1/s. The weight is a calibrated spatial
+        /// allocation: with all weights equal to 1 this is the rate of the whole face.
+        /// </summary>
+        public static double SurfaceRate(MaterialDefinition material, double skin, double weight, double bias)
+        {
+            return SurfaceRate(material, skin, weight, bias, SurfaceDamageTime);
+        }
+
+        /// <summary>As above, with the time constant of the difficulty in use, s.</summary>
+        public static double SurfaceRate(MaterialDefinition material, double skin, double weight, double bias, double damageTime)
+        {
+            if (material.DamageSurfaceTemp <= 0.0 || !(damageTime > 0.0))
+            {
+                return 0.0;
+            }
+            double damage = material.DamageSurfaceTemp * bias;
+            double span = material.MaxSurfaceTemp - damage;
+            if (!(span > 0.0) || !(skin > damage) || !(weight > 0.0))
+            {
+                return 0.0;
+            }
+            double x = Math.Min((skin - damage) / span, SurfaceOvershootCap);
+            return weight * x * x / damageTime;
+        }
+
+        /// <summary>
+        /// Rate at which the bond of a cell degrades, 1/s: Arrhenius relative to the limit, with a continuous
+        /// ramp below it and a cap above it.
+        /// </summary>
+        public static double BondRate(double limit, double substrate)
+        {
+            return BondRate(limit, substrate, BondDamageTime);
+        }
+
+        /// <summary>As above, with the time constant of the difficulty in use, s.</summary>
+        public static double BondRate(double limit, double substrate, double damageTime)
+        {
+            if (!(limit > 0.0) || !(substrate > 0.0) || double.IsInfinity(limit) || double.IsInfinity(substrate) || !(damageTime > 0.0))
+            {
+                return 0.0;
+            }
+            double ramp = (substrate - (limit - BondRampStart)) / (BondRampStart - BondRampEnd);
+            if (!(ramp > 0.0))
+            {
+                return 0.0;
+            }
+            if (ramp > 1.0)
+            {
+                ramp = 1.0;
+            }
+            double exponent = Math.Min(BondActivationTemp * (1.0 / limit - 1.0 / substrate), Math.Log(BondRateCap));
+            return ramp * Math.Exp(exponent) / damageTime;
         }
 
         // ----- surface properties and conduction -----

@@ -137,5 +137,21 @@ namespace RealTPS.Core.Tests
             ShieldState read;
             Assert.Equal(ShieldState.ReadStatus.Invalid, ShieldState.Read(over.Write(), new List<ValidationIssue>(), out read));
         }
+
+        [Fact]
+        public void TheBondLimitIsTheLowerOfMaterialAndStructure()
+        {
+            MaterialDefinition tile = TestMaterials.Tile();     // bond 530 K
+            var c = Construction();
+            Assert.Equal(530.0, c.BondLimit(tile));
+            c.StructureLimitTemp = 450.0;
+            Assert.Equal(450.0, c.BondLimit(tile));
+            c.StructureLimitTemp = 900.0;
+            Assert.Equal(530.0, c.BondLimit(tile));
+            MaterialDefinition legacy = LegacyProfile.Create(1.27, 200.0, 0.4, 3300.0);
+            Assert.Equal(900.0, c.BondLimit(legacy));
+            c.StructureLimitTemp = 0.0;
+            Assert.Equal(0.0, c.BondLimit(legacy));
+        }
     }
 }

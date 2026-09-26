@@ -497,6 +497,127 @@ namespace RealTPS.Core.Tests
 
         // ----- damage -----
 
+        [Fact]
+        public void BondRateIsContinuousBoundedAndIndependentOfAnyNativeLimit()
+        {
+            const double limit = 523.0;
+            Assert.Equal(0.0, ShieldSolver.BondRate(limit, 300.0));
+            Assert.Equal(0.0, ShieldSolver.BondRate(limit, limit - ShieldSolver.BondRampStart));
+            Assert.True(ShieldSolver.BondRate(limit, limit - ShieldSolver.BondRampStart + 0.01) < 1.0e-6);
+            Assert.Equal(1.0 / ShieldSolver.BondDamageTime, ShieldSolver.BondRate(limit, limit), 12);
+            Assert.Equal(ShieldSolver.BondRateCap / ShieldSolver.BondDamageTime, ShieldSolver.BondRate(limit, 5000.0), 12);
+            double previous = 0.0;
+            for (double t = 400.0; t <= 900.0; t += 0.5)
+            {
+                double rate = ShieldSolver.BondRate(limit, t);
+                Assert.True(rate >= previous);
+                Assert.True(rate - previous <= 0.03 * rate + 1.0e-5, "no cliff at " + t);
+                previous = rate;
+            }
+            Assert.Equal(0.0, ShieldSolver.BondRate(0.0, 800.0));
+            Assert.Equal(0.0, ShieldSolver.BondRate(limit, double.NaN));
+            Assert.Equal(0.0, ShieldSolver.BondRate(double.PositiveInfinity, 800.0));
+
+            // Two profiles that differ only in the native fallback take the same bond damage.
+            MaterialDefinition a = TestMaterials.Ablator();
+            MaterialDefinition b = TestMaterials.Ablator();
+            b.MaxSurfaceTemp = 9000.0;
+            ShieldState sa = Stocked(a, null, 0.05);
+            ShieldState sb = Stocked(b, null, 0.05);
+            var ra = new ShieldStepResult(sa.Count);
+            var rb = new ShieldStepResult(sb.Count);
+            for (int i = 0; i < 4000; i++)
+            {
+                ShieldSolver.Step(a, sa, Input(590.0, 0.05), ra);   // below onset: only the bond is at stake
+                ShieldSolver.Step(b, sb, Input(590.0, 0.05), rb);
+            }
+            Assert.True(sa.Integrity[0] < 1.0, "the bond of a thin layer under a hot skin should degrade");
+            for (int i = 0; i < sa.Count; i++)
+            {
+                Assert.Equal(sa.Integrity[i], sb.Integrity[i]);
+            }
+        }
+
+        [Fact]
+        public void SurfaceDeteriorationIsAllocatedByWeightAndKeepsItsMean()
+        {
+            MaterialDefinition tile = TestMaterials.Tile();         // damage 1600 K, fallback 1750 K
+            Assert.Equal(0.0, ShieldSolver.SurfaceRate(tile, 1600.0, 1.0, 1.0));
+            Assert.Equal(0.25 / ShieldSolver.SurfaceDamageTime, ShieldSolver.SurfaceRate(tile, 1675.0, 1.0, 1.0), 12);
+            Assert.Equal(1.0 / ShieldSolver.SurfaceDamageTime, ShieldSolver.SurfaceRate(tile, 1750.0, 1.0, 1.0), 12);
+            Assert.Equal(1.4 / ShieldSolver.SurfaceDamageTime, ShieldSolver.SurfaceRate(tile, 1750.0, 1.4, 1.0), 12);
+            Assert.Equal(0.0, ShieldSolver.SurfaceRate(TestMaterials.Ablator(), 2400.0, 1.0, 1.0));      // no such mechanism
+
+            ShieldState state = Stocked(tile);
+            var result = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1700.0, 0.02, 5.0e6, 0.5);
+            ShieldSolver.Step(tile, state, input, result);
+            double mean = 0.0, min = 1.0, max = 0.0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                double loss = 1.0 - state.Integrity[i];
+                mean += loss * state.Layout.AreaFraction(i);
+                min = Math.Min(min, loss);
+                max = Math.Max(max, loss);
+            }
+            // Before any cell fails the area-mean rate is the unweighted rate: the weight only allocates.
+            Assert.Equal(ShieldSolver.SurfaceRate(tile, 1700.0, 1.0, 1.0) * 0.02, mean, 12);
+            Assert.True(max > min * 1.5);
+        }
+
+        [Fact]
+        public void ATileOverItsLimitGoesInSecondsNotInOneStep()
+        {
+            MaterialDefinition tile = TestMaterials.Tile();
+            ShieldState state = Stocked(tile);
+            var result = new ShieldStepResult(state.Count);
+            double time = 0.0;
+            ShieldSolver.Step(tile, state, Input(1745.0, 0.02, 5.0e6), result);
+            Assert.True(state.MeanIntegrity > 0.99);                // one step does almost nothing
+            while (state.ExposedArea(false) < 1.0 - 1.0e-9 && time < 120.0)
+            {
+                ShieldSolver.Step(tile, state, Input(1745.0, 0.02, 5.0e6), result);
+                time += 0.02;
+            }
+            Assert.InRange(time, 4.0, 60.0);                        // every tile has given way within seconds
+            Assert.Equal(state.Construction.CarrierLimitTemp, result.NativeLimit);   // nothing protects: the bare carrier's limit
+            // The structure behind is not destroyed by exposure alone: it gives way as it heats.
+            Assert.False(result.FailureDue);
+            double more = 0.0;
+            while (!result.FailureDue && more < 300.0)
+            {
+                ShieldSolver.Step(tile, state, Input(1745.0, 0.02, 5.0e6), result);
+                more += 0.02;
+            }
+            Assert.True(result.FailureDue);
+            Assert.InRange(more, 10.0, 200.0);
+        }
+
+        [Fact]
+        public void ACellThatLosesItsIntegrityShedsWhatItHeldWithoutCooling()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m, null, 0.02);             // thin enough for the bond to fail first
+            var result = new ShieldStepResult(state.Count);
+            double shed = 0.0, sink = 0.0, pyrolysed = 0.0;
+            double start = state.TotalInventory;
+            for (int i = 0; i < 60000 && state.ExposedArea(true) < 1.0; i++)
+            {
+                ShieldSolver.Step(m, state, Input(595.0, 0.05), result);        // below the ablation onset
+                shed += result.ShedMass;
+                sink += result.HeatAbsorbed;
+                pyrolysed += result.PyrolysedMass;
+            }
+            Assert.Equal(1.0, state.ExposedArea(true), 9);
+            Assert.Equal(0.0, sink);
+            Assert.Equal(0.0, pyrolysed);
+            Assert.Equal(start, shed, 9);                           // failure before zero: the layer was still there
+            Assert.Equal(0.0, state.TotalInventory);
+            // A cold, bare carrier is not a structural failure; but nothing protects, so the native limit drops.
+            Assert.False(result.FailureDue);
+            Assert.Equal(state.Construction.CarrierLimitTemp, result.NativeLimit);
+        }
+
         // ----- exposure, leak, failure -----
 
         [Fact]
