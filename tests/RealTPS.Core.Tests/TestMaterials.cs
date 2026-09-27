@@ -21,6 +21,7 @@ RTPS_MATERIAL
     charEmissivity = 0.9
     maxSurfaceTemp = 2500
     conductivity = 0.2
+    bondLimitTemp = 520
     costPerKg = 2
     ABLATION
     {
@@ -50,6 +51,7 @@ RTPS_MATERIAL
     emissivity = 0.9
     maxSurfaceTemp = 2400
     conductivity = 5
+    bondLimitTemp = 900
     costPerKg = 50
     EROSION
     {
@@ -73,7 +75,9 @@ RTPS_MATERIAL
     specificHeat = 1000
     emissivity = 0.85
     maxSurfaceTemp = 1750
+    damageSurfaceTemp = 1600
     conductivity = 0.05
+    bondLimitTemp = 530
     costPerArea = 900
     techNode = hypersonicFlight
 }";

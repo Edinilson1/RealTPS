@@ -118,8 +118,20 @@ namespace RealTPS.Core.Materials
         /// </summary>
         public double MaxSurfaceTemp;
 
+        /// <summary>
+        /// Skin temperature above which the surface itself deteriorates, K (softening of a tile, embrittlement
+        /// of a fabric). 0 = the material has no such mechanism below the fallback.
+        /// </summary>
+        public double DamageSurfaceTemp;
+
         /// <summary>Thermal conductivity of the protection layer, W/(m K). 0 = not stated: no layer model.</summary>
         public double Conductivity;
+
+        /// <summary>
+        /// Temperature limit of the bond or of the structure the system is attached to in its reference
+        /// construction, K. 0 = not stated: no bond damage.
+        /// </summary>
+        public double BondLimitTemp;
 
         /// <summary>
         /// Surface temperature above which a reusable material is no longer reusable, K (0 = not stated).

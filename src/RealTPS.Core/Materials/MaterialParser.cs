@@ -165,14 +165,22 @@ namespace RealTPS.Core.Materials
             m.CharSurfaceFraction = Optional(node, "charSurfaceFraction", 0.05, 0.001, 1.0, issues, subject, snapshot);
             m.MaxSurfaceTemp = Required(node, "maxSurfaceTemp", 400.0, 6000.0, issues, subject, snapshot);
             m.ReuseSurfaceTemp = Optional(node, "reuseSurfaceTemp", 0.0, 0.0, 6000.0, issues, subject, snapshot);
+            // 0 = the material has no surface-deterioration mechanism below the fallback.
+            m.DamageSurfaceTemp = Optional(node, "damageSurfaceTemp", 0.0, 0.0, 6000.0, issues, subject, snapshot);
+            if (!snapshot && m.DamageSurfaceTemp > 0.0 && m.DamageSurfaceTemp < 300.0)
+            {
+                Error(issues, subject, "damageSurfaceTemp must be 0 (none) or at least 300 K");
+            }
             if (snapshot)
             {
                 // A profile committed without them (the legacy stock-rate profile) has no layer model.
                 m.Conductivity = Optional(node, "conductivity", 0.0, 0.0, 1000.0, issues, subject, true);
+                m.BondLimitTemp = Optional(node, "bondLimitTemp", 0.0, 0.0, 6000.0, issues, subject, true);
             }
             else
             {
                 m.Conductivity = Required(node, "conductivity", 0.005, 500.0, issues, subject, false);
+                m.BondLimitTemp = Required(node, "bondLimitTemp", 300.0, 6000.0, issues, subject, false);
             }
             m.CostPerKg = Optional(node, "costPerKg", 0.0, 0.0, 1.0e6, issues, subject, snapshot);
             m.CostPerArea = Optional(node, "costPerArea", 0.0, 0.0, 1.0e7, issues, subject, snapshot);
@@ -187,6 +195,10 @@ namespace RealTPS.Core.Materials
             if (m.ReuseSurfaceTemp > m.MaxSurfaceTemp)
             {
                 Error(issues, subject, "reuseSurfaceTemp cannot exceed maxSurfaceTemp");
+            }
+            if (m.DamageSurfaceTemp > 0.0 && m.DamageSurfaceTemp >= m.MaxSurfaceTemp)
+            {
+                Error(issues, subject, "damageSurfaceTemp must be below maxSurfaceTemp");
             }
 
             List<CfgNode> ablationNodes = node.GetNodes("ABLATION");

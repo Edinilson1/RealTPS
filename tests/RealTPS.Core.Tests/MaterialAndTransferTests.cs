@@ -117,6 +117,22 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EveryCatalogueProfileStatesConductivityAndBondLimit()
+        {
+            // The layer model and the damage model need both; a catalogue profile without them is refused.
+            foreach (string key in new[] { "conductivity", "bondLimitTemp" })
+            {
+                string cfg = System.Text.RegularExpressions.Regex.Replace(TestMaterials.TileCfg, key + " = [0-9.]+\\s*", string.Empty);
+                Assert.DoesNotContain(key, cfg);
+                List<ValidationIssue> issues;
+                Assert.Null(TryParse(cfg, out issues));
+            }
+            Assert.True(TestMaterials.Tile().HasLayerModel);
+            Assert.Equal(1600.0, TestMaterials.Tile().DamageSurfaceTemp);
+            Assert.Equal(0.0, TestMaterials.Ablator().DamageSurfaceTemp);
+        }
+
+        [Fact]
         public void SnapshotRoundTripsEveryField()
         {
             foreach (MaterialDefinition original in new[] { TestMaterials.Ablator(), TestMaterials.Carbon(), TestMaterials.Tile() })
