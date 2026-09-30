@@ -55,6 +55,9 @@ namespace RealTPS
         [KSPField] public double thicknessFactor = 1.0;
         [KSPField] public double includedDryArealDensity;
 
+        /// <summary>Surface limit of the bare carrier once the shield has failed, K.</summary>
+        [KSPField] public double substrateMaxTemp = 1100.0;
+
         /// <summary>True when RealTPS applies the stock occlusion rule to <c>part.heatConductivity</c>.</summary>
         [KSPField] public bool ownsConductivity = true;
 
@@ -76,6 +79,10 @@ namespace RealTPS
         [KSPField] public double centerPercent = ShieldLayout.DefaultCenterPercent;
         [KSPField] public string protectedFace = "0, -1, 0";
         [KSPField] public string sectorZero = "1, 0, 0";
+
+        [KSPField] public double backConductance = ShieldConstruction.DefaultBackConductance;
+        [KSPField] public double substrateHeatCapacity = ShieldConstruction.DefaultSubstrateHeatCapacity;
+        [KSPField] public double structureLimitTemp;
 
         /// <summary>
         /// The <b>requested</b> material: the part config value, replaced by the active B9 subtype's
@@ -1061,6 +1068,15 @@ namespace RealTPS
             {
                 double surface = flight && state != null ? ShieldSolver.NativeLimit(material, state) : material.MaxSurfaceTemp;
                 uiLimit = surface.ToString("F0", CultureInfo.InvariantCulture) + " K";
+                double bond = material.BondLimitTemp;
+                if (structureLimitTemp > 0.0 && (bond <= 0.0 || structureLimitTemp < bond))
+                {
+                    bond = structureLimitTemp;
+                }
+                if (bond > 0.0 && (state == null || !state.Failed))
+                {
+                    uiLimit += " / " + Localizer.Format("#LOC_RTPS_ui_bond_limit", bond.ToString("F0", CultureInfo.InvariantCulture));
+                }
             }
 
             BaseField sink = Fields["sinkPowerKw"];
@@ -1148,6 +1164,10 @@ namespace RealTPS
             if (oxidising)
             {
                 return Localizer.Format("#LOC_RTPS_status_oxidising");
+            }
+            if (state != null && material.HasLayerModel && tpsIntegrity < 0.995)
+            {
+                return Localizer.Format("#LOC_RTPS_status_damaged");
             }
             if (reuseLimitExceeded)
             {

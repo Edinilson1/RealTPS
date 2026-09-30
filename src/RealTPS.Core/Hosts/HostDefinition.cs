@@ -25,6 +25,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>Protected area, m^2.</summary>
         public double Area;
 
+        /// <summary>Surface limit of the bare substrate once a consumable is exhausted, K.</summary>
+        public double SubstrateMaxTemp;
+
         /// <summary>Capabilities the part offers (for example <c>hot_structure</c>).</summary>
         public List<string> Capabilities = new List<string>();
 
@@ -73,6 +76,15 @@ namespace RealTPS.Core.Hosts
         /// <summary>Direction on the face towards the middle of sector zero, part coordinates.</summary>
         public double[] SectorZero = { 1.0, 0.0, 0.0 };
 
+        /// <summary>Conductance from the substrate to the part's interior, W/(m^2 K).</summary>
+        public double BackConductance = ShieldConstruction.DefaultBackConductance;
+
+        /// <summary>Heat capacity of the substrate plate behind the protection, J/(m^2 K).</summary>
+        public double SubstrateHeatCapacity = ShieldConstruction.DefaultSubstrateHeatCapacity;
+
+        /// <summary>Temperature limit of the structure the protection is bonded to, K. 0 = the material's bond limit alone.</summary>
+        public double StructureLimitTemp;
+
         private static readonly Regex TokenPattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
         private static readonly Regex PartPattern = new Regex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant);
 
@@ -105,6 +117,10 @@ namespace RealTPS.Core.Hosts
             if (!node.TryGetDouble("area", out host.Area) || host.Area <= 0.0 || host.Area > 10000.0)
             {
                 issues.Add(new ValidationIssue(true, subject, "area must be a positive number of square metres"));
+            }
+            if (!node.TryGetDouble("substrateMaxTemp", out host.SubstrateMaxTemp) || host.SubstrateMaxTemp < 300.0 || host.SubstrateMaxTemp > 6000.0)
+            {
+                issues.Add(new ValidationIssue(true, subject, "substrateMaxTemp must be between 300 and 6000 K"));
             }
             host.Capabilities = node.GetList("capabilities");
             host.Materials = node.GetList("materials");
@@ -169,12 +185,39 @@ namespace RealTPS.Core.Hosts
             {
                 issues.Add(new ValidationIssue(true, subject, "protectedFace must be a non-zero direction and sectorZero must not be parallel to it"));
             }
+            if (node.HasValue("backConductance") && (!node.TryGetDouble("backConductance", out host.BackConductance) || host.BackConductance < 0.1 || host.BackConductance > 10000.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "backConductance must be between 0.1 and 10000 W/(m2 K)"));
+            }
+            if (node.HasValue("substrateHeatCapacity") && (!node.TryGetDouble("substrateHeatCapacity", out host.SubstrateHeatCapacity) || host.SubstrateHeatCapacity < 100.0 || host.SubstrateHeatCapacity > 1.0e6))
+            {
+                issues.Add(new ValidationIssue(true, subject, "substrateHeatCapacity must be between 100 and 1e6 J/(m2 K)"));
+            }
+            if (node.HasValue("structureLimitTemp") && (!node.TryGetDouble("structureLimitTemp", out host.StructureLimitTemp) || host.StructureLimitTemp < 300.0 || host.StructureLimitTemp > 6000.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "structureLimitTemp must be between 300 and 6000 K"));
+            }
         }
 
         /// <summary>The grid of the protected face.</summary>
         public ShieldLayout Layout()
         {
             return new ShieldLayout(Sectors, Rings, CenterPercent);
+        }
+
+        /// <summary>The construction a shield of this material is committed with on this host.</summary>
+        public ShieldConstruction Construction(MaterialDefinition material, double bareEmissivity)
+        {
+            return new ShieldConstruction
+            {
+                Area = Area,
+                LayerThickness = material.DesignThickness * ThicknessFactor,
+                BackConductance = BackConductance,
+                SubstrateHeatCapacity = SubstrateHeatCapacity,
+                StructureLimitTemp = StructureLimitTemp,
+                CarrierLimitTemp = SubstrateMaxTemp,
+                BareEmissivity = bareEmissivity > 0.0 && bareEmissivity <= 1.0 ? bareEmissivity : ShieldConstruction.DefaultBareEmissivity
+            };
         }
 
         /// <summary>Consumable inventory of a material on this host, kg.</summary>
