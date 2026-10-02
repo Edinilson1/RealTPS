@@ -3,6 +3,29 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.14.0 for KSP 1.12.x
+
+ - 2026-10-01
+
+### Changes since the previous version
+
+* Added: Integrity. The protection of each cell can now be damaged:
+  - tile surfaces deteriorate above their damage limit (LI-900 1644 K, TUFROC 1870 K): a tile held past it fails
+    in seconds, not in a single step;
+  - the bond under each cell degrades when it stays too hot for too long, starting 100 K below its limit.
+* Added: An estimate of the layer and bond temperatures of each cell, which keeps evolving after the heat pulse
+  while the heat stored in the shield soaks back into the bond.
+* Added: The TPS limit line also shows the bond limit (or the structure's, when that is lower), and a damaged
+  shield shows "Damaged".
+* Changed: Balance: ablators now end by running out or by a hot bond. PICA and Phenolic-Fiberglass on a heavy
+  capsule are at the edge on a long, shallow Mun return, and their descriptions say so.
+
+### For Modders
+
+* Material schema (still version 1): `bondLimitTemp` (required) and `damageSurfaceTemp` (optional) added;
+  `maxStructureTemp` and `depletedMaxSurfaceTemp` removed. `maxSurfaceTemp` is now the catastrophic fallback.
+* Host fields `backConductance`, `substrateHeatCapacity` and `structureLimitTemp`.
+
 ## v0.13.1 for KSP 1.12.x
 
  - 2026-09-19
