@@ -62,6 +62,17 @@ namespace RealTPS.Core.Shield
         /// <summary>Gated windward factor per cell, area-weighted mean 1.</summary>
         public readonly double[] Windward;
 
+        /// <summary>Time each cell spent exposed during the step, s.</summary>
+        public readonly double[] ExposedTime;
+
+        /// <summary>Heat each exposed cell asks to pass on, J, already inside the donor's budget.</summary>
+        public readonly double[] BreachEnergy;
+
+        public double BreachTotal;
+
+        /// <summary>Number of cells that became exposed during the step.</summary>
+        public int NewlyExposed;
+
         // Surface properties from the state at the end of the step; the engine sees them in its next step.
 
         /// <summary>Area-weighted emissivity of the face.</summary>
@@ -75,6 +86,7 @@ namespace RealTPS.Core.Shield
 
         internal readonly double[] StartInventory;
         internal readonly double[] ProtectedFraction;
+        internal readonly bool[] StartExposed;
         internal readonly double[] DamageRate;
         internal readonly double[] PyrolysisDemand;
         internal readonly double[] ShearDemand;
@@ -84,8 +96,11 @@ namespace RealTPS.Core.Shield
         {
             Weights = new double[cells];
             Windward = new double[cells];
+            ExposedTime = new double[cells];
+            BreachEnergy = new double[cells];
             StartInventory = new double[cells];
             ProtectedFraction = new double[cells];
+            StartExposed = new bool[cells];
             DamageRate = new double[cells];
             PyrolysisDemand = new double[cells];
             ShearDemand = new double[cells];
@@ -99,13 +114,17 @@ namespace RealTPS.Core.Shield
 
         internal void Reset(int cells)
         {
-            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = Gate = 0.0;
+            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = Gate = 0.0;
             ShearOverload = false;
+            NewlyExposed = 0;
             for (int i = 0; i < cells; i++)
             {
                 Weights[i] = 1.0;
                 Windward[i] = 1.0;
+                ExposedTime[i] = 0.0;
+                BreachEnergy[i] = 0.0;
                 ProtectedFraction[i] = 1.0;
+                StartExposed[i] = false;
             }
         }
     }
@@ -136,6 +155,9 @@ namespace RealTPS.Core.Shield
 
         /// <summary>Largest factor by which the bond rate may exceed its value at the limit.</summary>
         public const double BondRateCap = 50.0;
+
+        /// <summary>Share of the heat falling on an exposed cell that is passed on.</summary>
+        public const double BreachShare = 0.5;
 
         /// <summary>Contact conductance between the skin node and what lies under it, W/(m^2 K). Calibration.</summary>
         public const double ContactConductance = 200.0;
@@ -262,6 +284,11 @@ namespace RealTPS.Core.Shield
 
                     double protectedTime = dt * fraction;
                     double exposedTime = dt - protectedTime;
+                    result.ExposedTime[i] = exposedTime;
+                    if (exposedTime > 0.0 && !result.StartExposed[i])
+                    {
+                        result.NewlyExposed++;
+                    }
                     if (protectedTime > 0.0)
                     {
                         double thickness = consumable
@@ -269,6 +296,46 @@ namespace RealTPS.Core.Shield
                             : construction.LayerThickness;
                         ObserveProtected(material, construction, thickness, protectedTime, skin, interior, ref state.LayerTemp[i], ref state.SubstrateTemp[i]);
                     }
+                    if (exposedTime > 0.0)
+                    {
+                        ObserveExposed(construction, exposedTime, skin, interior, ref state.LayerTemp[i], ref state.SubstrateTemp[i]);
+                    }
+                }
+
+                // ----- heat that exposed cells pass on: a share of what the airflow and the jets put on each -----
+                // The airflow counts only when it meets the protected face; a jet counts wherever it lands (its
+                // power is only non-zero when it was traced to this face).
+                double airPower = power > 0.0 && input.Flow.Defined && input.Flow.Facing > 0.0 ? power : 0.0;
+                if (settings.Transfer && breachShare > 0.0 && airPower > 0.0 && capacity > 0.0)
+                {
+                    double total = 0.0;
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (result.ExposedTime[i] > 0.0)
+                        {
+                            double share = breachShare * layout.AreaFraction(i) * result.ExposedTime[i];
+                            result.BreachEnergy[i] = share * airPower * w[i];
+                            total += result.BreachEnergy[i];
+                        }
+                    }
+                    double floor = material.Ablation != null ? material.Ablation.OnsetTemp : interior;
+                    double whole = capacity * Math.Max(0.0, skin - floor);
+                    double budget = whole - result.HeatAbsorbed;
+                    if (!(budget > whole * 1.0e-9))
+                    {
+                        // The sink used the budget up (to rounding): nothing is left to pass on.
+                        budget = 0.0;
+                    }
+                    if (total > budget)
+                    {
+                        double scale = total > 0.0 ? budget / total : 0.0;
+                        for (int i = 0; i < n; i++)
+                        {
+                            result.BreachEnergy[i] *= scale;
+                        }
+                        total = budget;
+                    }
+                    result.BreachTotal = total;
                 }
             }
 

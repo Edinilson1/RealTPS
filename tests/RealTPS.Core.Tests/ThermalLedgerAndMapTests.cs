@@ -119,6 +119,19 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void SkinToOwnInteriorMovesBothTemperatures()
+        {
+            // Same part, two reservoirs: a part-keyed ledger would cancel the debit against the credit.
+            var ledger = new ThermalLedger<KeyValuePair<string, int>>();
+            var skin = new KeyValuePair<string, int>("pod", 0);
+            var interior = new KeyValuePair<string, int>("pod", 1);
+            double granted = ledger.Transfer(skin, 800.0, 1200.0, interior, 60000.0, 320.0, 4000.0, 0.02);
+            Assert.Equal(4000.0, granted, 9);
+            Assert.Equal(1200.0 - 5.0, ledger.Projected(skin, 1200.0, 800.0), 9);
+            Assert.Equal(320.0 + 4000.0 / 60000.0, ledger.Projected(interior, 320.0, 60000.0), 9);
+        }
+
+        [Fact]
         public void NothingMovesUphillOrFromBadNumbers()
         {
             var ledger = new ThermalLedger<string>();

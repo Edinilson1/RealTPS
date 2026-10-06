@@ -218,6 +218,29 @@ namespace RealTPS.Core.Shield
             }
         }
 
+        /// <summary>
+        /// True when the cell no longer protects: the shield has failed, the cell's integrity is gone or, for a
+        /// consumable material, its inventory is exhausted.
+        /// </summary>
+        public bool IsExposed(int cell, bool consumable)
+        {
+            return Integrity[cell] <= 0.0 || (consumable && Inventory[cell] <= EmptyCell);
+        }
+
+        /// <summary>Share of the face that is exposed, 0..1.</summary>
+        public double ExposedArea(bool consumable)
+        {
+            double area = 0.0;
+            for (int i = 0; i < Count; i++)
+            {
+                if (IsExposed(i, consumable))
+                {
+                    area += Layout.AreaFraction(i);
+                }
+            }
+            return Math.Min(1.0, area);
+        }
+
         /// <summary>Remaining share of the cell's consumable, 0..1; 1 when the cell never had one.</summary>
         public double Fraction(int cell)
         {

@@ -444,6 +444,35 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void TheResistanceIsMonotonicAndContinuousAtExposure()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            var c = new ShieldConstruction { Area = 1.0 };
+            double previous = double.MaxValue;
+            // Steady substrate temperature rises as the layer recedes and meets the exposed value without a jump.
+            foreach (double thickness in new[] { 0.05, 0.01, 0.001, 1.0e-4, 2.0e-5, 1.0e-5, 9.9e-6, 1.0e-6, 1.0e-9, 0.0 })
+            {
+                double layer = 300.0, substrate = 300.0;
+                for (int i = 0; i < 2000; i++)
+                {
+                    ShieldSolver.ObserveProtected(m, c, thickness, 50.0, 1500.0, 300.0, ref layer, ref substrate);
+                }
+                Assert.False(double.IsNaN(substrate) || double.IsNaN(layer));
+                double resistance = (1500.0 - substrate) / ((substrate - 300.0) * c.BackConductance);
+                Assert.Equal(thickness / m.Conductivity + 1.0 / ShieldSolver.ContactConductance, resistance, 9);
+                Assert.True(resistance <= previous);
+                previous = resistance;
+            }
+            double exposedLayer = 300.0, exposed = 300.0;
+            for (int i = 0; i < 2000; i++)
+            {
+                ShieldSolver.ObserveExposed(c, 50.0, 1500.0, 300.0, ref exposedLayer, ref exposed);
+            }
+            Assert.Equal(1.0 / ShieldSolver.ContactConductance, (1500.0 - exposed) / ((exposed - 300.0) * c.BackConductance), 9);
+            Assert.Equal(1500.0, exposedLayer);
+        }
+
+        [Fact]
         public void ALayerThinnerThanTheNodeCutoffIsStillALayer()
         {
             MaterialDefinition m = TestMaterials.Ablator();
@@ -621,6 +650,66 @@ namespace RealTPS.Core.Tests
         // ----- exposure, leak, failure -----
 
         [Fact]
+        public void AnExposedCellPassesOnAShareOfWhatFallsOnIt()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            state.Inventory[10] = 0.0;
+            var result = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1500.0, 0.02, 5.0e6, 0.4);
+            ShieldSolver.Step(m, state, input, result);
+            double expected = ShieldSolver.BreachShare * 5.0e6 * state.Layout.AreaFraction(10) * result.Weights[10] * 0.02;
+            Assert.Equal(expected, result.BreachEnergy[10], 6);
+            Assert.Equal(expected, result.BreachTotal, 6);
+            for (int i = 0; i < state.Count; i++)
+            {
+                if (i != 10)
+                {
+                    Assert.Equal(0.0, result.BreachEnergy[i]);
+                }
+            }
+
+            // Sink and leak share one budget; the sink is served first.
+            input.ExposedSkinHeatCapacity = 7.0;
+            ShieldState tight = Stocked(m);
+            tight.Inventory[10] = 0.0;
+            ShieldSolver.Step(m, tight, input, result);
+            double budget = 7.0 * (1500.0 - m.Ablation.OnsetTemp);
+            Assert.True(result.HeatAbsorbed > 0.0 && result.BreachTotal > 0.0);
+            Assert.True(result.BreachTotal < expected, "the leak must be cut back by the shared budget");
+            Assert.Equal(budget, result.HeatAbsorbed + result.BreachTotal, 6);
+
+            // A budget smaller than the sink alone leaves nothing for the leak.
+            input.ExposedSkinHeatCapacity = 2.0;
+            tight = Stocked(m);
+            tight.Inventory[10] = 0.0;
+            ShieldSolver.Step(m, tight, input, result);
+            Assert.Equal(2.0 * (1500.0 - m.Ablation.OnsetTemp), result.HeatAbsorbed, 6);
+            Assert.Equal(0.0, result.BreachTotal);
+
+            // Switched off by difficulty, or not heating: nothing moves.
+            input = Input(1500.0, 0.02, 5.0e6, 0.4);
+            input.Settings = new ShieldSettings { Transfer = false, CellVariation = 0.0 };
+            ShieldSolver.Step(m, state, input, result);
+            Assert.Equal(0.0, result.BreachTotal);
+            ShieldSolver.Step(m, state, Input(1500.0, 0.02, 0.0, 0.4), result);
+            Assert.Equal(0.0, result.BreachTotal);
+        }
+
+        [Fact]
+        public void TheFaceShowsTheAreaWeightedEmissivityOfItsCells()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();         // 0.7 virgin, 0.9 charred
+            ShieldState state = Stocked(m);
+            state.Construction.BareEmissivity = 0.35;
+            Assert.Equal(0.7, ShieldSolver.Emissivity(m, state), 12);
+            state.Inventory[7] = 0.0;                               // bare
+            state.Pyrolysed[20] = state.Capacity[20];               // fully charred
+            double a7 = state.Layout.AreaFraction(7), a20 = state.Layout.AreaFraction(20);
+            Assert.Equal(0.7 * (1.0 - a7 - a20) + 0.35 * a7 + 0.9 * a20, ShieldSolver.Emissivity(m, state), 12);
+        }
+
+        [Fact]
         public void OutcomesDoNotDependOnTheTimestep()
         {
             MaterialDefinition m = TestMaterials.Ablator();
@@ -713,6 +802,19 @@ namespace RealTPS.Core.Tests
             {
                 Assert.False(double.IsNaN(v) || double.IsInfinity(v));
             }
+        }
+    }
+
+    public class ShieldFailurePolicyTests
+    {
+
+        [Fact]
+        public void IntegratedHostsHeatTheirOwnInterior()
+        {
+            Assert.False(ShieldFailurePolicy.UsesOwnInterior("dedicated", false, false));
+            Assert.True(ShieldFailurePolicy.UsesOwnInterior("multifunction", false, false));
+            Assert.True(ShieldFailurePolicy.UsesOwnInterior("dedicated", true, false));
+            Assert.True(ShieldFailurePolicy.UsesOwnInterior("dedicated", false, true));
         }
     }
 }

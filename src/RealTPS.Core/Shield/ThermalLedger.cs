@@ -111,4 +111,23 @@ namespace RealTPS.Core.Shield
             return !double.IsNaN(value) && !double.IsInfinity(value) && value > 0.0;
         }
     }
+
+    /// <summary>
+    /// Where the heat that exposed cells pass on goes, by the part's role. A failed shield always stays on the
+    /// vessel and loses its protection (<see cref="ShieldFailure.ProtectionLost"/>); it never separates.
+    /// </summary>
+    public static class ShieldFailurePolicy
+    {
+        public const string RoleDedicated = "dedicated";
+        public const string RoleMultifunction = "multifunction";
+
+        /// <summary>
+        /// True when heat passed on by exposed cells goes to the part's own interior instead of to the part
+        /// found behind it.
+        /// </summary>
+        public static bool UsesOwnInterior(string role, bool hasCrewCapacity, bool hasCommand)
+        {
+            return role != RoleDedicated || hasCrewCapacity || hasCommand;
+        }
+    }
 }

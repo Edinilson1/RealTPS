@@ -49,6 +49,20 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void ExposureDependsOnIntegrityAndForConsumablesOnInventory()
+        {
+            ShieldState state = Sample();
+            Assert.True(state.IsExposed(3, true));      // empty cell, consumable material
+            Assert.False(state.IsExposed(3, false));    // a material without inventory is not exposed by an empty cell
+            Assert.True(state.IsExposed(9, true));      // integrity gone
+            Assert.True(state.IsExposed(9, false));
+            Assert.False(state.IsExposed(5, true));     // damaged, not gone
+            double expected = state.Layout.AreaFraction(3) + state.Layout.AreaFraction(9);
+            Assert.Equal(expected, state.ExposedArea(true), 12);
+            Assert.Equal(state.Layout.AreaFraction(9), state.ExposedArea(false), 12);
+        }
+
+        [Fact]
         public void ThicknessComesFromTheInventoryOrFromTheConstruction()
         {
             MaterialDefinition ablator = TestMaterials.Ablator();   // 500 kg/m3
