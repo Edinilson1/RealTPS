@@ -710,6 +710,42 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void HotExposedStructureGivesWayGraduallyAndOnlyOnce()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            for (int i = 0; i < 8; i++)
+            {
+                state.Inventory[16 + i] = 0.0;                      // the outer band is gone: about 55 % of the face
+            }
+            var result = new ShieldStepResult(state.Count);
+            double time = 0.0, firstLoss = -1.0;
+            while (!result.FailureDue && time < 600.0)
+            {
+                ShieldStepInput input = Input(1900.0, 0.05, 6.0e6);
+                ShieldSolver.Step(m, state, input, result);
+                time += 0.05;
+                if (firstLoss < 0.0 && state.Structure < 1.0)
+                {
+                    firstLoss = time;
+                }
+            }
+            Assert.True(result.FailureDue);
+            Assert.True(firstLoss > 5.0, "the exposed substrate lags the skin before the structure starts to give, started at " + firstLoss);
+            Assert.True(time > firstLoss + 2.0, "and then gives way over seconds, not in a step");
+            Assert.True(state.ExposedArea(true) < 1.0, "cells were still protected when the shield failed");
+            Assert.Equal(m.MaxSurfaceTemp, result.NativeLimit);     // nothing is applied until the adapter decides
+
+            ShieldSolver.ApplyFailure(state, ShieldFailure.ProtectionLost);
+            ShieldSolver.Step(m, state, Input(900.0, 0.05, 1.0e6), result);
+            Assert.False(result.FailureDue);                        // once
+            Assert.Equal(state.Construction.CarrierLimitTemp, result.NativeLimit);
+            Assert.Equal(0.0, result.HeatAbsorbed);                 // the sink has stopped
+            Assert.Equal(state.Construction.BareEmissivity, result.Emissivity, 12);
+            Assert.True(result.BreachTotal > 0.0);                  // and the whole face leaks
+        }
+
+        [Fact]
         public void OutcomesDoNotDependOnTheTimestep()
         {
             MaterialDefinition m = TestMaterials.Ablator();

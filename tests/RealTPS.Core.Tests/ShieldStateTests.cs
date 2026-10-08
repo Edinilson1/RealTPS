@@ -63,6 +63,24 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void AFailedShieldIsExposedEverywhere()
+        {
+            ShieldState state = Sample();
+            double shed = ShieldSolver.ApplyFailure(state, ShieldFailure.ProtectionLost);
+            Assert.Equal(30.0 - 30.0 * state.Layout.AreaFraction(3), shed, 9);
+            Assert.Equal(0.0, state.TotalInventory);
+            Assert.Equal(0.0, state.Structure);
+            Assert.Equal(1.0, state.ExposedArea(false), 12);
+            for (int i = 0; i < state.Count; i++)
+            {
+                Assert.True(state.IsExposed(i, false));
+            }
+            // Once only: a second failure changes nothing.
+            Assert.Equal(0.0, ShieldSolver.ApplyFailure(state, ShieldFailure.ProtectionLost));
+            Assert.Equal(ShieldFailure.ProtectionLost, state.Failure);
+        }
+
+        [Fact]
         public void ThicknessComesFromTheInventoryOrFromTheConstruction()
         {
             MaterialDefinition ablator = TestMaterials.Ablator();   // 500 kg/m3

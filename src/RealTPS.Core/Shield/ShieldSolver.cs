@@ -70,6 +70,9 @@ namespace RealTPS.Core.Shield
 
         public double BreachTotal;
 
+        /// <summary>True when the structure has given way and no failure has been recorded yet.</summary>
+        public bool FailureDue;
+
         /// <summary>Number of cells that became exposed during the step.</summary>
         public int NewlyExposed;
 
@@ -115,7 +118,7 @@ namespace RealTPS.Core.Shield
         internal void Reset(int cells)
         {
             PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = Gate = 0.0;
-            ShearOverload = false;
+            ShearOverload = FailureDue = false;
             NewlyExposed = 0;
             for (int i = 0; i < cells; i++)
             {
@@ -155,6 +158,9 @@ namespace RealTPS.Core.Shield
 
         /// <summary>Largest factor by which the bond rate may exceed its value at the limit.</summary>
         public const double BondRateCap = 50.0;
+
+        /// <summary>Time for fully exposed structure at twice its limit to fail, s. Calibration.</summary>
+        public const double StructureDamageTime = 10.0;
 
         /// <summary>Share of the heat falling on an exposed cell that is passed on.</summary>
         public const double BreachShare = 0.5;
@@ -300,6 +306,26 @@ namespace RealTPS.Core.Shield
                     {
                         ObserveExposed(construction, exposedTime, skin, interior, ref state.LayerTemp[i], ref state.SubstrateTemp[i]);
                     }
+                }
+
+                // ----- structure behind exposed cells -----
+                if (!state.Failed)
+                {
+                    double load = 0.0;
+                    double carrier = construction.CarrierLimitTemp;
+                    for (int i = 0; i < n; i++)
+                    {
+                        if (result.ExposedTime[i] > 0.0)
+                        {
+                            double excess = (state.SubstrateTemp[i] - carrier) / carrier;
+                            load += layout.AreaFraction(i) * Math.Max(0.0, Math.Min(3.0, excess)) * result.ExposedTime[i];
+                        }
+                    }
+                    if (settings.Failure && load > 0.0)
+                    {
+                        state.Structure = Math.Max(0.0, state.Structure - Math.Max(0.0, settings.Severity) * load / structureTime);
+                    }
+                    result.FailureDue = settings.Failure && state.Structure <= 0.0;
                 }
 
                 // ----- heat that exposed cells pass on: a share of what the airflow and the jets put on each -----
@@ -518,6 +544,33 @@ namespace RealTPS.Core.Shield
             }
             double exponent = Math.Min(BondActivationTemp * (1.0 / limit - 1.0 / substrate), Math.Log(BondRateCap));
             return ramp * Math.Exp(exponent) / damageTime;
+        }
+
+        // ----- failure -----
+
+        /// <summary>
+        /// Records the failure of the shield as a whole, once. Every cell then counts as exposed; what the
+        /// cells still held is shed without cooling. Returns the mass shed, kg.
+        /// </summary>
+        public static double ApplyFailure(ShieldState state, ShieldFailure mode)
+        {
+            if (state == null)
+            {
+                throw new ArgumentNullException(nameof(state));
+            }
+            if (mode == ShieldFailure.None || state.Failed)
+            {
+                return 0.0;
+            }
+            double shed = 0.0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                shed += state.Inventory[i];
+                state.Inventory[i] = 0.0;
+            }
+            state.Structure = 0.0;
+            state.Failure = mode;
+            return shed;
         }
 
         // ----- surface properties and conduction -----

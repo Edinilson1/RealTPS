@@ -6,6 +6,18 @@ using RealTPS.Core.Materials;
 
 namespace RealTPS.Core.Shield
 {
+    /// <summary>How a shield ended, once it has.</summary>
+    public enum ShieldFailure
+    {
+        None,
+
+        /// <summary>
+        /// The shield lost its protection and stays on the vessel. A failed shield never separates: if the bare
+        /// part overheats, the game's thermal engine destroys it.
+        /// </summary>
+        ProtectionLost
+    }
+
     /// <summary>
     /// The construction a shield was committed with: everything about the host that shapes the response of
     /// the protection. It is frozen in the saved state, so that a later change of the part config does not
@@ -139,6 +151,11 @@ namespace RealTPS.Core.Shield
         /// <summary>Estimated temperature of the substrate at the bond, K.</summary>
         public readonly double[] SubstrateTemp;
 
+        /// <summary>Structural integrity of the host behind its protection, 1 = sound, 0 = failed.</summary>
+        public double Structure = 1.0;
+
+        public ShieldFailure Failure = ShieldFailure.None;
+
         /// <summary>False until the layer temperatures have been set from the part once.</summary>
         public bool ThermalInitialised;
 
@@ -218,13 +235,19 @@ namespace RealTPS.Core.Shield
             }
         }
 
+        /// <summary>True once the shield has failed as a whole: every cell then counts as exposed.</summary>
+        public bool Failed
+        {
+            get { return Failure != ShieldFailure.None; }
+        }
+
         /// <summary>
         /// True when the cell no longer protects: the shield has failed, the cell's integrity is gone or, for a
         /// consumable material, its inventory is exhausted.
         /// </summary>
         public bool IsExposed(int cell, bool consumable)
         {
-            return Integrity[cell] <= 0.0 || (consumable && Inventory[cell] <= EmptyCell);
+            return Failed || Integrity[cell] <= 0.0 || (consumable && Inventory[cell] <= EmptyCell);
         }
 
         /// <summary>Share of the face that is exposed, 0..1.</summary>
@@ -291,6 +314,8 @@ namespace RealTPS.Core.Shield
             node.AddValue("integrity", Pack(Integrity));
             node.AddValue("layerTemp", Pack(LayerTemp));
             node.AddValue("substrateTemp", Pack(SubstrateTemp));
+            node.AddValue("structure", R(Structure));
+            node.AddValue("failure", Failure.ToString());
             node.AddValue("thermalInitialised", ThermalInitialised ? "true" : "false");
             return node;
         }
@@ -357,6 +382,18 @@ namespace RealTPS.Core.Shield
                 & Unpack(node, "layerTemp", result.LayerTemp, 0.0, 1.0e5, issues)
                 & Unpack(node, "substrateTemp", result.SubstrateTemp, 0.0, 1.0e5, issues);
 
+            double structure;
+            if (!node.TryGetDouble("structure", out structure) || structure < 0.0 || structure > 1.0)
+            {
+                issues.Add(new ValidationIssue(true, "shield state", "structure must be between 0 and 1"));
+                ok = false;
+            }
+            ShieldFailure failure;
+            if (!Enum.TryParse(node.GetValue("failure") ?? string.Empty, false, out failure) || !Enum.IsDefined(typeof(ShieldFailure), failure))
+            {
+                issues.Add(new ValidationIssue(true, "shield state", "unknown failure mode"));
+                ok = false;
+            }
             string initialised = (node.GetValue("thermalInitialised") ?? string.Empty).Trim();
             if (initialised != "true" && initialised != "false")
             {
@@ -376,6 +413,8 @@ namespace RealTPS.Core.Shield
                 }
                 result.Inventory[i] = Math.Min(result.Inventory[i], result.Capacity[i]);
             }
+            result.Structure = structure;
+            result.Failure = failure;
             result.ThermalInitialised = initialised == "true";
             state = result;
             return ReadStatus.Ok;
