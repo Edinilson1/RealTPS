@@ -176,6 +176,7 @@ namespace RealTPS.Core.Generation
             Line(sb, 2, "centerPercent", F(host.CenterPercent));
             Line(sb, 2, "protectedFace", ShieldGeometry.FormatVector(host.ProtectedFace));
             Line(sb, 2, "sectorZero", ShieldGeometry.FormatVector(host.SectorZero));
+            Line(sb, 2, "partRole", host.PartRole);
             Line(sb, 2, "backConductance", F(host.BackConductance));
             Line(sb, 2, "substrateHeatCapacity", F(host.SubstrateHeatCapacity));
             Line(sb, 2, "structureLimitTemp", F(host.StructureLimitTemp));

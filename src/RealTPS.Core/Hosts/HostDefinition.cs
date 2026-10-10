@@ -76,6 +76,9 @@ namespace RealTPS.Core.Hosts
         /// <summary>Direction on the face towards the middle of sector zero, part coordinates.</summary>
         public double[] SectorZero = { 1.0, 0.0, 0.0 };
 
+        /// <summary><c>dedicated</c> (a shield and nothing else) or <c>multifunction</c> (a pod, a tank ...).</summary>
+        public string PartRole = string.Empty;
+
         /// <summary>Conductance from the substrate to the part's interior, W/(m^2 K).</summary>
         public double BackConductance = ShieldConstruction.DefaultBackConductance;
 
@@ -84,6 +87,9 @@ namespace RealTPS.Core.Hosts
 
         /// <summary>Temperature limit of the structure the protection is bonded to, K. 0 = the material's bond limit alone.</summary>
         public double StructureLimitTemp;
+
+        public const string RoleDedicated = "dedicated";
+        public const string RoleMultifunction = "multifunction";
 
         private static readonly Regex TokenPattern = new Regex("^[a-z][a-z0-9_]*$", RegexOptions.CultureInvariant);
         private static readonly Regex PartPattern = new Regex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant);
@@ -184,6 +190,12 @@ namespace RealTPS.Core.Hosts
             if (host.ProtectedFace != null && host.SectorZero != null && !ShieldGeometry.IsUsableFrame(host.ProtectedFace, host.SectorZero))
             {
                 issues.Add(new ValidationIssue(true, subject, "protectedFace must be a non-zero direction and sectorZero must not be parallel to it"));
+            }
+
+            host.PartRole = (node.GetValue("partRole") ?? string.Empty).Trim();
+            if (host.PartRole != RoleDedicated && host.PartRole != RoleMultifunction)
+            {
+                issues.Add(new ValidationIssue(true, subject, "partRole must be '" + RoleDedicated + "' or '" + RoleMultifunction + "'"));
             }
             if (node.HasValue("backConductance") && (!node.TryGetDouble("backConductance", out host.BackConductance) || host.BackConductance < 0.1 || host.BackConductance > 10000.0))
             {

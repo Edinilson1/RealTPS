@@ -150,6 +150,11 @@ namespace RealTPS
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, "sectors / rings / centerPercent do not form a valid grid");
             }
+            if (module.partRole != RealTPS.Core.Shield.ShieldFailurePolicy.RoleDedicated
+                && module.partRole != RealTPS.Core.Shield.ShieldFailurePolicy.RoleMultifunction)
+            {
+                return Localizer.Format("#LOC_RTPS_startup_host", name, "partRole must be 'dedicated' or 'multifunction'");
+            }
             double[] normal, tangent;
             if (!RealTPS.Core.Shield.ShieldGeometry.TryParseVector(module.protectedFace, out normal)
                 || !RealTPS.Core.Shield.ShieldGeometry.TryParseVector(module.sectorZero, out tangent)

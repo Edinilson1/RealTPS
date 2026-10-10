@@ -80,6 +80,12 @@ namespace RealTPS
         [KSPField] public string protectedFace = "0, -1, 0";
         [KSPField] public string sectorZero = "1, 0, 0";
 
+        /// <summary>
+        /// <c>dedicated</c> (breach heat goes to the part behind) or <c>multifunction</c> (to the part's own
+        /// interior). It no longer decides anything about failure: a failed shield always stays.
+        /// </summary>
+        [KSPField] public string partRole = ShieldFailurePolicy.RoleDedicated;
+
         [KSPField] public double backConductance = ShieldConstruction.DefaultBackConductance;
         [KSPField] public double substrateHeatCapacity = ShieldConstruction.DefaultSubstrateHeatCapacity;
         [KSPField] public double structureLimitTemp;
@@ -168,6 +174,7 @@ namespace RealTPS
         [NonSerialized] private MaterialDefinition material;
         [NonSerialized] private ShieldState state;
         [NonSerialized] private ShieldStepResult result;
+        [NonSerialized] private ShieldRouting routing;
         [NonSerialized] private FaceFrame frame;
         [NonSerialized] private Incidence flow;
         [NonSerialized] private string inertReason = string.Empty;
@@ -175,6 +182,7 @@ namespace RealTPS
         [NonSerialized] private bool reconciling;
         [NonSerialized] private bool resourceMissing;
         [NonSerialized] private bool stateRefused;
+        [NonSerialized] private bool stepping;
         [NonSerialized] private double massDelta;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
@@ -187,6 +195,8 @@ namespace RealTPS
         [NonSerialized] private float nextUiRefresh;
         [NonSerialized] private double nextTelemetry;
         [NonSerialized] private bool oxidising;
+        [NonSerialized] private double grantedBreach;
+        [NonSerialized] private Part[] recipients;
 
         // ----- public read-only API -----
 
@@ -225,6 +235,24 @@ namespace RealTPS
         public string InertReason
         {
             get { return inertReason; }
+        }
+
+        // ----- access for the coordinator and the diagnostics window (same assembly) -----
+
+        internal ShieldState State
+        {
+            get { return IsActive ? state : null; }
+        }
+
+        internal ShieldStepResult LastResult
+        {
+            get { return result; }
+        }
+
+        /// <summary>True while the physics step runs for this shield (not packed, not under analytic integration).</summary>
+        internal bool IsStepping
+        {
+            get { return stepping; }
         }
 
         // ================================================================================================
@@ -660,6 +688,8 @@ namespace RealTPS
             tpsCapacity = state.TotalCapacity;
             tpsPyrolysed = state.TotalPyrolysed;
             result = new ShieldStepResult(state.Count);
+            recipients = new Part[state.Count];
+            routing = new ShieldRouting(state.Count);
 
             double[] normal, tangent;
             if (!ShieldGeometry.TryParseVector(protectedFace, out normal) || !ShieldGeometry.TryParseVector(sectorZero, out tangent)
@@ -899,9 +929,28 @@ namespace RealTPS
             }
         }
 
+        /// <summary>
+        /// True when this shield takes part in the step. No chemistry, damage or transfer while packed (on
+        /// rails) or under analytic thermal integration.
+        /// </summary>
+        internal bool ReadyToStep()
+        {
+            return IsActive && part != null && vessel != null && FlightGlobals.ready && vessel.loaded && !vessel.packed && !part.packed;
+        }
+
+        internal void Idle()
+        {
+            stepping = false;
+            sinkPowerKw = 0.0;
+            tpsShearOverload = false;
+            oxidising = false;
+        }
+
         /// <summary>Phase 1: consumption, damage, the sink and the requests of exposed cells. Nothing is submitted.</summary>
         internal void Plan(double dt)
         {
+            stepping = true;
+            grantedBreach = 0.0;
             UpdateConductivity();
 
             double skinTemp = part.skinTemperature;
@@ -935,6 +984,48 @@ namespace RealTPS
             }
             sinkPowerKw = dt > 0.0 ? result.HeatAbsorbed * 0.001 / dt : 0.0;
             oxidising = result.OxidisedMass > 0.0;
+        }
+
+        /// <summary>The single sink of this step, J.</summary>
+        internal double PlannedSink
+        {
+            get { return result != null ? result.HeatAbsorbed : 0.0; }
+        }
+
+        /// <summary>
+        /// Phase 3: what exposed cells pass on. Requests are summed per recipient reservoir before the pair
+        /// bound is applied, so the grant does not depend on how many cells the same area is divided into.
+        /// </summary>
+        internal void PlanTransfers(ThermalLedger<ShieldCoordinator.Reservoir> ledger, double dt)
+        {
+            if (!(result.BreachTotal > 0.0))
+            {
+                return;
+            }
+            var donor = new ShieldCoordinator.Reservoir(part, false);
+            double donorCapacity = ShieldCoordinator.ExposedSkinCapacity(part);
+            double donorTemp = part.skinTemperature;
+
+            if (ShieldFailurePolicy.UsesOwnInterior(partRole, part.CrewCapacity > 0, part.FindModuleImplementing<ModuleCommand>() != null))
+            {
+                grantedBreach = ledger.Transfer(donor, donorCapacity, donorTemp,
+                    new ShieldCoordinator.Reservoir(part, true), ShieldCoordinator.InteriorCapacity(part), part.temperature, result.BreachTotal, dt);
+                return;
+            }
+
+            Vector3 direction = vessel.srfSpeed > 1.0 ? -((Vector3)vessel.srf_velocity).normalized : Vector3.zero;
+            if (direction.sqrMagnitude < 1.0e-6f)
+            {
+                direction = -part.transform.TransformDirection(new Vector3((float)frame.Nx, (float)frame.Ny, (float)frame.Nz));
+            }
+            routing.Refresh(part, frame, state.Layout, direction, FaceRadius(), false);
+        }
+
+        /// <summary>Radius of the protected face, m: from the protected area, or the opening radius of a deployable shield.</summary>
+        internal double FaceRadius()
+        {
+            double radius = Math.Sqrt(Math.Max(0.01, state != null ? state.Construction.Area : tpsArea) / Math.PI);
+            return radius;
         }
 
         /// <summary>Phase 5: surface properties for the engine's next step, flags, notifications.</summary>
@@ -971,6 +1062,41 @@ namespace RealTPS
             if (RtpsCatalogue.TelemetryLog)
             {
                 LogTelemetry(part.skinTemperature);
+            }
+        }
+
+        /// <summary>True when the structure has given way and the failure has not been enacted yet.</summary>
+        internal bool FailureDue
+        {
+            get { return IsActive && result != null && result.FailureDue && !state.Failed; }
+        }
+
+        /// <summary>
+        /// Phase 6, after every thermal transaction of the step: the shield fails, once. It stays on the vessel
+        /// and loses its protection: its surface limit drops to the bare carrier's (<c>substrateMaxTemp</c>).
+        /// If the bare part overheats, the game's thermal engine destroys it. RealTPS never calls
+        /// <c>explode()</c>, <c>Die()</c> or <c>decouple()</c>.
+        /// </summary>
+        internal void EnactFailure()
+        {
+            bool wasActive = vessel == FlightGlobals.ActiveVessel;
+            string title = part.partInfo != null ? part.partInfo.title : part.name;
+
+            ShieldSolver.ApplyFailure(state, ShieldFailure.ProtectionLost);
+            tpsInventory = state.TotalInventory;
+            if (mirror != null)
+            {
+                mirror.amount = tpsInventory;
+            }
+            tpsDepleted = material.HasConsumable;
+            ApplySurfaceProperties();
+            UpdateContractFields();
+            Notify("protection_lost");
+            RtpsLog.Info(PartLabel() + ": shield failed (protection lost) at skin " + F(part.skinTemperature) + " K, exposed "
+                + F(100.0 * tpsExposedArea) + " %");
+            if (wasActive)
+            {
+                ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_protection_lost", title), 10f, ScreenMessageStyle.UPPER_CENTER);
             }
         }
 
