@@ -180,6 +180,11 @@ namespace RealTPS.Core.Generation
             Line(sb, 2, "backConductance", F(host.BackConductance));
             Line(sb, 2, "substrateHeatCapacity", F(host.SubstrateHeatCapacity));
             Line(sb, 2, "structureLimitTemp", F(host.StructureLimitTemp));
+            if (host.DeployAnimation.Length > 0)
+            {
+                Line(sb, 2, "deployAnimation", host.DeployAnimation);
+                Line(sb, 2, "deployedRadius", F(host.DeployedRadius));
+            }
             Line(sb, 2, "ownsConductivity", host.OwnsConductivity ? "true" : "false");
             Line(sb, 2, "legacyAblatorCapacity", F(host.ReplacesStockAblator ? host.StockAblator : 0.0));
             Line(sb, 2, "charModuleName", host.CharModuleName);

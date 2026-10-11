@@ -89,6 +89,8 @@ namespace RealTPS
         [KSPField] public double backConductance = ShieldConstruction.DefaultBackConductance;
         [KSPField] public double substrateHeatCapacity = ShieldConstruction.DefaultSubstrateHeatCapacity;
         [KSPField] public double structureLimitTemp;
+        [KSPField] public string deployAnimation = string.Empty;
+        [KSPField] public double deployedRadius;
 
         /// <summary>
         /// The <b>requested</b> material: the part config value, replaced by the active B9 subtype's
@@ -186,6 +188,7 @@ namespace RealTPS
         [NonSerialized] private double massDelta;
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
+        [NonSerialized] private ModuleAnimateGeneric deployModule;
         [NonSerialized] private float lastCharScalar = -1f;
         [NonSerialized] private bool baseCaptured;
         [NonSerialized] private double baseEmissive;
@@ -541,6 +544,10 @@ namespace RealTPS
             }
 
             Reconcile(switcher);
+            if (!string.IsNullOrEmpty(deployAnimation))
+            {
+                deployModule = FindDeployModule();
+            }
             ApplySurfaceProperties();
             LogLifecycle("flight");
         }
@@ -856,6 +863,34 @@ namespace RealTPS
             }
         }
 
+        private ModuleAnimateGeneric FindDeployModule()
+        {
+            for (int i = 0; i < part.Modules.Count; i++)
+            {
+                var animation = part.Modules[i] as ModuleAnimateGeneric;
+                if (animation != null && animation.animationName == deployAnimation)
+                {
+                    return animation;
+                }
+            }
+            RtpsLog.Warn(PartLabel() + ": no ModuleAnimateGeneric plays '" + deployAnimation + "'; the shield is treated as fully deployed");
+            return null;
+        }
+
+        /// <summary>Deployment of an inflatable or deployable shield, 0 = stowed, 1 = open. 1 for rigid shields.</summary>
+        internal double DeployProgress
+        {
+            get
+            {
+                if (deployModule == null)
+                {
+                    return 1.0;
+                }
+                float value = deployModule.GetScalar;
+                return float.IsNaN(value) ? 1.0 : Mathf.Clamp01(value);
+            }
+        }
+
         private void CaptureBaseProperties()
         {
             if (baseCaptured)
@@ -1025,6 +1060,11 @@ namespace RealTPS
         internal double FaceRadius()
         {
             double radius = Math.Sqrt(Math.Max(0.01, state != null ? state.Construction.Area : tpsArea) / Math.PI);
+            if (deployedRadius > 0.0 && deployModule != null)
+            {
+                double stowed = Math.Min(deployedRadius, Math.Max(0.25, 0.25 * deployedRadius));
+                radius = stowed + (deployedRadius - stowed) * DeployProgress;
+            }
             return radius;
         }
 

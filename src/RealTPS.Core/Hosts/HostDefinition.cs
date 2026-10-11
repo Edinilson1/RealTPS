@@ -88,6 +88,12 @@ namespace RealTPS.Core.Hosts
         /// <summary>Temperature limit of the structure the protection is bonded to, K. 0 = the material's bond limit alone.</summary>
         public double StructureLimitTemp;
 
+        /// <summary>Animation of an inflatable or deployable shield, or empty.</summary>
+        public string DeployAnimation = string.Empty;
+
+        /// <summary>Radius of the protected face when fully deployed, m. Required with <see cref="DeployAnimation"/>.</summary>
+        public double DeployedRadius;
+
         public const string RoleDedicated = "dedicated";
         public const string RoleMultifunction = "multifunction";
 
@@ -208,6 +214,15 @@ namespace RealTPS.Core.Hosts
             if (node.HasValue("structureLimitTemp") && (!node.TryGetDouble("structureLimitTemp", out host.StructureLimitTemp) || host.StructureLimitTemp < 300.0 || host.StructureLimitTemp > 6000.0))
             {
                 issues.Add(new ValidationIssue(true, subject, "structureLimitTemp must be between 300 and 6000 K"));
+            }
+            host.DeployAnimation = (node.GetValue("deployAnimation") ?? string.Empty).Trim();
+            if (node.HasValue("deployedRadius") && (!node.TryGetDouble("deployedRadius", out host.DeployedRadius) || host.DeployedRadius <= 0.0 || host.DeployedRadius > 1000.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "deployedRadius must be a positive number of metres"));
+            }
+            if ((host.DeployAnimation.Length > 0) != (host.DeployedRadius > 0.0))
+            {
+                issues.Add(new ValidationIssue(true, subject, "deployAnimation and deployedRadius must be given together"));
             }
         }
 
