@@ -150,6 +150,9 @@ namespace RealTPS
         [KSPField(guiName = "#LOC_RTPS_ui_sink", guiFormat = "F1", guiUnits = " kW")]
         public double sinkPowerKw;
 
+        [KSPField(guiName = "#LOC_RTPS_ui_breach", guiFormat = "F1", guiUnits = " kW")]
+        public double breachPowerKw;
+
         [KSPField(guiActive = true, guiActiveEditor = false, guiName = "#LOC_RTPS_ui_material")]
         public string uiMaterial = string.Empty;
 
@@ -158,6 +161,9 @@ namespace RealTPS
 
         [KSPField(guiActive = false, guiActiveEditor = false, guiName = "#LOC_RTPS_ui_remaining")]
         public string uiRemaining = string.Empty;
+
+        [KSPField(guiActive = false, guiActiveEditor = false, guiName = "#LOC_RTPS_ui_integrity")]
+        public string uiIntegrity = string.Empty;
 
         [KSPField(guiActive = true, guiActiveEditor = true, guiName = "#LOC_RTPS_ui_limit")]
         public string uiLimit = string.Empty;
@@ -184,6 +190,7 @@ namespace RealTPS
         [NonSerialized] private bool reconciling;
         [NonSerialized] private bool resourceMissing;
         [NonSerialized] private bool stateRefused;
+        [NonSerialized] private bool breachAnnounced;
         [NonSerialized] private bool stepping;
         [NonSerialized] private double massDelta;
         [NonSerialized] private PartResource mirror;
@@ -977,6 +984,7 @@ namespace RealTPS
         {
             stepping = false;
             sinkPowerKw = 0.0;
+            breachPowerKw = 0.0;
             tpsShearOverload = false;
             oxidising = false;
         }
@@ -1071,6 +1079,7 @@ namespace RealTPS
         /// <summary>Phase 5: surface properties for the engine's next step, flags, notifications.</summary>
         internal void Finish(double dt)
         {
+            breachPowerKw = dt > 0.0 ? grantedBreach * 0.001 / dt : 0.0;
             part.emissiveConstant = result.Emissivity;
             part.skinMaxTemp = result.NativeLimit;
             ApplyConduction(result.Conductance);
@@ -1084,12 +1093,29 @@ namespace RealTPS
                 }
             }
 
+            if (result.NewlyExposed > 0 && !state.Failed)
+            {
+                Notify("cell_exposed");
+                if (!breachAnnounced && material.HasLayerModel)
+                {
+                    breachAnnounced = true;
+                    RtpsLog.Info(PartLabel() + ": first cell exposed at skin " + F(part.skinTemperature) + " K, " + F(100.0 * RemainingFraction) + " % of the inventory left");
+                    if (vessel == FlightGlobals.ActiveVessel)
+                    {
+                        ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_breach", part.partInfo.title), 8f, ScreenMessageStyle.UPPER_CENTER);
+                    }
+                }
+            }
+
             bool depleted = material.HasConsumable && tpsInventory <= AblationSolver.DepletionThreshold;
             if (depleted && !tpsDepleted)
             {
                 tpsDepleted = true;
                 Notify("depleted");
+                if (!material.HasLayerModel || !state.Failed)
+                {
                     ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_depleted", part.partInfo.title), 8f, ScreenMessageStyle.UPPER_CENTER);
+                }
                 RtpsLog.Info(PartLabel() + ": thermal protection exhausted at skin " + F(part.skinTemperature) + " K");
             }
 
@@ -1224,6 +1250,19 @@ namespace RealTPS
                 uiRemaining = (100.0 * RemainingFraction).ToString("F0", CultureInfo.InvariantCulture) + "%  (" + (RemainingThickness * 1000.0).ToString("F1", CultureInfo.InvariantCulture) + " mm)";
             }
 
+            bool damageState = flight && active && state != null && material.HasLayerModel;
+            BaseField integrity = Fields["uiIntegrity"];
+            if (integrity != null)
+            {
+                integrity.guiActive = damageState;
+            }
+            if (damageState)
+            {
+                uiIntegrity = Localizer.Format("#LOC_RTPS_ui_integrity_value",
+                    (100.0 * tpsIntegrity).ToString("F0", CultureInfo.InvariantCulture),
+                    (100.0 * tpsExposedArea).ToString("F0", CultureInfo.InvariantCulture));
+            }
+
             BaseField limit = Fields["uiLimit"];
             if (limit != null)
             {
@@ -1249,6 +1288,11 @@ namespace RealTPS
             if (sink != null)
             {
                 sink.guiActive = flight && active && PhysicsGlobals.ThermalDataDisplay;
+            }
+            BaseField breach = Fields["breachPowerKw"];
+            if (breach != null)
+            {
+                breach.guiActive = flight && active && PhysicsGlobals.ThermalDataDisplay;
             }
 
             if (flight && active && charModule != null && material.Ablation != null && tpsCapacity > 0.0)
@@ -1315,6 +1359,14 @@ namespace RealTPS
             {
                 return Localizer.Format("#LOC_RTPS_status_ready");
             }
+            if (state != null && state.Failed)
+            {
+                return Localizer.Format("#LOC_RTPS_status_failed");
+            }
+            if (state != null && material.HasLayerModel && tpsExposedArea > 0.0)
+            {
+                return Localizer.Format("#LOC_RTPS_status_breached", (100.0 * tpsExposedArea).ToString("F0", CultureInfo.InvariantCulture));
+            }
             if (tpsDepleted)
             {
                 return Localizer.Format("#LOC_RTPS_status_depleted");
@@ -1357,6 +1409,7 @@ namespace RealTPS
             material = null;
             inertReason = reason ?? string.Empty;
             sinkPowerKw = 0.0;
+            breachPowerKw = 0.0;
         }
 
         private void SetUntreated()
@@ -1365,6 +1418,7 @@ namespace RealTPS
             material = null;
             inertReason = string.Empty;
             sinkPowerKw = 0.0;
+            breachPowerKw = 0.0;
         }
 
         private void WarnOnScreen()
@@ -1431,6 +1485,11 @@ namespace RealTPS
                 return;
             }
             nextTelemetry = now + 1.0;
+            double hottest = 0.0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                hottest = Math.Max(hottest, state.SubstrateTemp[i]);
+            }
             RtpsLog.Info("telemetry: part=" + PartLabel()
                 + " ut=" + now.ToString("F2", CultureInfo.InvariantCulture)
                 + " alt=" + F(vessel.altitude)
@@ -1441,6 +1500,7 @@ namespace RealTPS
                 + " inv=" + F(tpsInventory)
                 + " pyro=" + F(tpsPyrolysed)
                 + " sinkKw=" + F(sinkPowerKw)
+                + " breachKw=" + F(breachPowerKw)
                 + " convKw=" + F(part.thermalConvectionFlux)
                 + " radKw=" + F(part.thermalRadiationFlux)
                 + " qPa=" + F(part.dynamicPressurekPa * 1000.0)
@@ -1448,6 +1508,10 @@ namespace RealTPS
                 + " condMult=" + F(part.skinInternalConductionMult)
                 + " gate=" + F(result.Gate)
                 + " tilt=" + F(flow.Tilt)
+                + " exposed=" + F(tpsExposedArea)
+                + " integrity=" + F(tpsIntegrity)
+                + " structure=" + F(tpsStructure)
+                + " bondMaxT=" + F(hottest)
                 + " shear=" + (tpsShearOverload ? "1" : "0"));
         }
     }
