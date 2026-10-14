@@ -29,7 +29,7 @@ namespace RealTPS
     public class ModuleRtpsShield : PartModule, IPartMassModifier
     {
         /// <summary>Version of the read-only state contract exposed to other mods.</summary>
-        public const int ContractVersion = 1;
+        public const int ContractVersion = 2;
 
         /// <summary>Persisted state layout version.</summary>
         public const int StateVersion = 1;
@@ -146,6 +146,18 @@ namespace RealTPS
 
         /// <summary>True when the committed material is no longer offered by the part's selector.</summary>
         [KSPField] public bool tpsDetached;
+
+        /// <summary>Share of the protected face that is exposed, 0..1.</summary>
+        [KSPField] public double tpsExposedArea;
+
+        /// <summary>Area-weighted mean integrity of the cells, 0..1.</summary>
+        [KSPField] public double tpsIntegrity = 1.0;
+
+        /// <summary>Structural integrity of the host behind its protection, 0..1.</summary>
+        [KSPField] public double tpsStructure = 1.0;
+
+        /// <summary><c>none</c> or <c>protection_lost</c>.</summary>
+        [KSPField] public string tpsFailure = "none";
 
         [KSPField(guiName = "#LOC_RTPS_ui_sink", guiFormat = "F1", guiUnits = " kW")]
         public double sinkPowerKw;
@@ -556,6 +568,7 @@ namespace RealTPS
                 deployModule = FindDeployModule();
             }
             ApplySurfaceProperties();
+            UpdateContractFields();
             LogLifecycle("flight");
         }
 
@@ -1125,6 +1138,7 @@ namespace RealTPS
                 Notify("reuse_limit_exceeded");
             }
 
+            UpdateContractFields();
             if (RtpsCatalogue.TelemetryLog)
             {
                 LogTelemetry(part.skinTemperature);
@@ -1166,6 +1180,19 @@ namespace RealTPS
             }
         }
 
+        private void UpdateContractFields()
+        {
+            if (state == null || material == null)
+            {
+                return;
+            }
+            bool layered = material.HasLayerModel;
+            tpsExposedArea = layered ? state.ExposedArea(material.HasConsumable) : 0.0;
+            tpsIntegrity = layered ? state.MeanIntegrity : 1.0;
+            tpsStructure = state.Structure;
+            tpsFailure = state.Failure == ShieldFailure.ProtectionLost ? "protection_lost" : "none";
+        }
+
         private bool InOxygenAtmosphere()
         {
             CelestialBody body = vessel.mainBody;
@@ -1181,6 +1208,7 @@ namespace RealTPS
                 details.Set("state", stateName);
                 details.Set("materialId", committedMaterialId);
                 details.Set("remainingFraction", RemainingFraction);
+                details.Set("exposedArea", tpsExposedArea);
                 part.SendEvent(StateEventName, details, 0);
             }
             catch (Exception e)
