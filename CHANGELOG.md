@@ -3,6 +3,43 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.15.0 for KSP 1.12.x
+
+ - 2026-10-14
+
+### Changes since the previous version
+
+* Added: Breaches. A cell with no material or no integrity left is exposed: it shows the bare structure, lets heat
+  into the part, and passes half of the heat that falls on it to the part behind the shield, found by a ray traced
+  from the cell along the airflow. On a pod, or any part with crew or a command module, that heat goes into the part
+  itself.
+* Added: Structure. The bare part under the exposed cells gives way, gradually, when it gets hotter than it can
+  take.
+* Added: Shield failure. Once the structure behind the breaches has given way, the shield fails, once. A dedicated
+  shield with nothing attached below it comes off; any other part, pods and crewed parts included, stays on the
+  vessel and loses its protection, and its surface limit drops to that of the bare part (1100 K for the stock rigid
+  shields and pods, 700 K for the inflatable shield). RealTPS never explodes a part by itself.
+* Added: Part menu: TPS integrity ("x% sound, y% of the face exposed") and Heat through breaches (kW, with the
+  thermal data display on); statuses "Breached" and "FAILED - protection lost"; on-screen warnings when a shield is
+  breached and when it loses its protection.
+* Added: The inflatable shield's face follows its deploy animation from stowed to open. Opening and closing it
+  changes its size, never its material or its damage.
+* Added: Telemetry fields `exposed`, `integrity`, `structure` and `bondMaxT`.
+* Changed: All the shields of a vessel take their physics step together: cooling, breach heat and surface
+  properties are planned first and handed to the game once per step, and failures come last. Heat passed between
+  two parts never makes them cross temperatures.
+
+### For Modders
+
+* Public contract version 2: `tpsExposedArea`, `tpsIntegrity`, `tpsStructure` and `tpsFailure` (`none`,
+  `protection_lost`, `detached`). `OnRtpsStateChanged` adds `cell_exposed`, `protection_lost` and `detached`, and
+  reports `exposedArea`.
+* Host fields `partRole` (`dedicated` or `multifunction`), `deployAnimation` and `deployedRadius`.
+
+### Known Issues
+
+* The protected face of a KV pod is modelled as a flat disc.
+
 ## v0.14.0 for KSP 1.12.x
 
  - 2026-10-01
