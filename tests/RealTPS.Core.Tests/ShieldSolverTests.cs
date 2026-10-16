@@ -647,6 +647,85 @@ namespace RealTPS.Core.Tests
             Assert.Equal(state.Construction.CarrierLimitTemp, result.NativeLimit);
         }
 
+        [Fact]
+        public void TheSinkStaysInsideItsBudgetWhenSomeCellsCannotMeetTheirDemand()
+        {
+            // Counterexample: a cell asked for more than it holds must not let the budget scale be computed
+            // on clamped amounts and applied to unclamped ones.
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            for (int i = 0; i < state.Count; i += 2)
+            {
+                state.Inventory[i] = 1.0e-4;                        // half the cells nearly empty
+            }
+            var result = new ShieldStepResult(state.Count);
+            foreach (double capacity in new[] { 1.0, 5.0, 30.0, 200.0 })
+            {
+                ShieldState s = Stocked(m);
+                for (int i = 0; i < s.Count; i += 2)
+                {
+                    s.Inventory[i] = 1.0e-4;
+                }
+                ShieldStepInput input = Input(2200.0, 0.5, 5.0e6, 0.3, capacity: capacity);
+                input.DynamicPressure = 120000.0;
+                ShieldSolver.Step(m, s, input, result);
+                double budget = capacity * (2200.0 - m.Ablation.OnsetTemp);
+                Assert.True(result.HeatAbsorbed <= budget * (1.0 + 1.0e-9), "sink " + result.HeatAbsorbed + " over budget " + budget);
+                Assert.Equal(result.PyrolysedMass * m.Ablation.HeatOfAblation, result.HeatAbsorbed, 6);
+                for (int i = 0; i < s.Count; i++)
+                {
+                    Assert.True(s.Inventory[i] >= 0.0);
+                }
+            }
+        }
+
+        [Fact]
+        public void ACellThatGivesWayMidStepConsumesOnlyUntilThen()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            ShieldState reference = Stocked(m);
+            state.ThermalInitialised = reference.ThermalInitialised = true;
+            for (int i = 0; i < state.Count; i++)
+            {
+                state.SubstrateTemp[i] = reference.SubstrateTemp[i] = 300.0;
+                state.LayerTemp[i] = reference.LayerTemp[i] = 300.0;
+            }
+            // Cell 6 has a hot bond and almost no integrity left: it gives way early in the step.
+            state.SubstrateTemp[6] = 700.0;
+            state.Integrity[6] = 0.05;
+            var result = new ShieldStepResult(state.Count);
+            var full = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1600.0, 0.5, 5.0e6);
+            ShieldSolver.Step(m, reference, input, full);
+            ShieldSolver.Step(m, state, input, result);
+            double rate = ShieldSolver.BondRate(m.BondLimitTemp, 700.0);
+            double window = 0.05 / (rate * 0.5);
+            Assert.InRange(window, 0.01, 0.9);
+            double fullCell = reference.Pyrolysed[6];
+            Assert.Equal(fullCell * window, state.Pyrolysed[6], 9);  // pyrolysis only until it gave way
+            Assert.Equal(0.0, state.Integrity[6]);
+            Assert.Equal(0.0, state.Inventory[6]);
+            Assert.Equal(reference.Capacity[6] - fullCell * window, result.ShedMass, 9);   // the rest is shed without cooling
+            Assert.Equal((1.0 - window) * 0.5, result.ExposedTime[6], 9);
+        }
+
+        [Fact]
+        public void ACellThatEmptiesSharesWhatItHadBetweenTheChannelsByRate()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            state.Inventory[2] = 1.0e-5;
+            var result = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1800.0, 0.5, 5.0e6);
+            input.DynamicPressure = 150000.0;                        // shear and pyrolysis at once
+            input.Settings.Damage = false;
+            ShieldSolver.Step(m, state, input, result);
+            Assert.Equal(0.0, state.Inventory[2]);
+            Assert.True(state.Pyrolysed[2] > 0.0 && state.Pyrolysed[2] < 1.0e-5);   // not all of it went to pyrolysis
+            Assert.True(result.ExposedTime[2] > 0.0);
+        }
+
         // ----- exposure, leak, failure -----
 
         [Fact]

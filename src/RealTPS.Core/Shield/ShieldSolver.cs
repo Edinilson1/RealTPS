@@ -412,6 +412,27 @@ namespace RealTPS.Core.Shield
             // No free cooling: the sink may not pull the skin below the onset temperature within one step.
             // Without a usable heat capacity the bound is unknown, so no sink is applied at all.
             double scale = 1.0;
+            if (ablation != null && pyrolysisBase > 0.0)
+            {
+                double budget = capacity * Math.Max(0.0, skin - ablation.OnsetTemp);
+                if (SinkEnergy(state, result, ablation.HeatOfAblation, 1.0) > budget)
+                {
+                    double lo = 0.0, hi = 1.0;
+                    for (int k = 0; k < 60; k++)
+                    {
+                        double mid = 0.5 * (lo + hi);
+                        if (SinkEnergy(state, result, ablation.HeatOfAblation, mid) > budget)
+                        {
+                            hi = mid;
+                        }
+                        else
+                        {
+                            lo = mid;
+                        }
+                    }
+                    scale = lo;
+                }
+            }
 
             for (int i = 0; i < n; i++)
             {
@@ -426,6 +447,13 @@ namespace RealTPS.Core.Shield
                 double total = pyrolysis + shear + oxidation;
                 double factor = 1.0;
                 double remaining = inventory - total;
+                if (total > 0.0 && remaining <= ShieldState.EmptyCell)
+                {
+                    // The cell empties during the window: it is exposed from that moment on.
+                    factor = Math.Min(1.0, inventory / total);
+                    result.ProtectedFraction[i] *= factor;
+                    remaining = 0.0;
+                }
                 double pyrolysed = pyrolysis * factor;
                 state.Inventory[i] = remaining;
                 state.Pyrolysed[i] += pyrolysed;
@@ -437,6 +465,24 @@ namespace RealTPS.Core.Shield
                     result.HeatAbsorbed += pyrolysed * ablation.HeatOfAblation;
                 }
             }
+        }
+
+        /// <summary>Energy the sink would take with the pyrolysis rate scaled by <paramref name="scale"/>, J.</summary>
+        private static double SinkEnergy(ShieldState state, ShieldStepResult result, double heatOfAblation, double scale)
+        {
+            double sum = 0.0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                if (result.StartExposed[i])
+                {
+                    continue;
+                }
+                double pyrolysis = result.PyrolysisDemand[i] * scale;
+                double total = pyrolysis + result.ShearDemand[i] + result.OxidationDemand[i];
+                double inventory = state.Inventory[i];
+                sum += total > inventory && total > 0.0 ? pyrolysis * inventory / total : pyrolysis;
+            }
+            return sum * heatOfAblation;
         }
 
         private static double Sane(double value)
