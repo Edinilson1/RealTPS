@@ -219,6 +219,9 @@ namespace RealTPS
         [NonSerialized] private bool oxidising;
         [NonSerialized] private double grantedBreach;
         [NonSerialized] private Part[] recipients;
+
+        /// <summary><c>Time.fixedTime</c> of the last physics tick in which the coordinator handled this shield.</summary>
+        [NonSerialized] internal double LastStepTime = double.NaN;
         [NonSerialized] private double[] recipientJoules;
 
         // ----- public read-only API -----
@@ -992,7 +995,8 @@ namespace RealTPS
         /// </summary>
         internal bool ReadyToStep()
         {
-            return IsActive && part != null && vessel != null && FlightGlobals.ready && vessel.loaded && !vessel.packed && !part.packed;
+            return IsActive && part != null && vessel != null && FlightGlobals.ready && vessel.loaded && !vessel.packed && !part.packed
+                && (double)TimeWarp.CurrentRate <= PhysicsGlobals.ThermalMaxIntegrationWarp;
         }
 
         internal void Idle()
@@ -1254,6 +1258,18 @@ namespace RealTPS
             {
                 RtpsLog.Warn("state event '" + stateName + "' failed: " + e.Message);
             }
+        }
+
+        /// <summary>Called by the coordinator when a step threw: the shield stops instead of throwing every frame.</summary>
+        internal void Fault(Exception e)
+        {
+            RtpsLog.Error("physics step failed on " + PartLabel() + ": " + e);
+            // Keep the cells as they are: they are still saved. Only the stepping stops.
+            mode = Mode.Inert;
+            inertReason = "internal error: " + e.Message;
+            sinkPowerKw = 0.0;
+            breachPowerKw = 0.0;
+            stepping = false;
         }
 
         // ================================================================================================
