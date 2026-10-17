@@ -132,6 +132,23 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void CoalescedRequestsMakeTheGrantIndependentOfTheGrid()
+        {
+            // The same exposed area asking as one request or as many: the adapter sums per reservoir pair first.
+            var one = new ThermalLedger<string>();
+            double single = one.Transfer("shield", 3000.0, 1300.0, "tank", 900.0, 350.0, 80000.0, 0.02);
+            var many = new ThermalLedger<string>();
+            double sum = 0.0;
+            for (int cell = 0; cell < 16; cell++)
+            {
+                sum += 80000.0 / 16.0;
+            }
+            double coalesced = many.Transfer("shield", 3000.0, 1300.0, "tank", 900.0, 350.0, sum, 0.02);
+            Assert.Equal(single, coalesced, 9);
+            Assert.True(single < 80000.0, "the case must be saturated for the comparison to mean anything");
+        }
+
+        [Fact]
         public void NothingMovesUphillOrFromBadNumbers()
         {
             var ledger = new ThermalLedger<string>();

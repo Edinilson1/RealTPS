@@ -219,6 +219,7 @@ namespace RealTPS
         [NonSerialized] private bool oxidising;
         [NonSerialized] private double grantedBreach;
         [NonSerialized] private Part[] recipients;
+        [NonSerialized] private double[] recipientJoules;
 
         // ----- public read-only API -----
 
@@ -716,6 +717,7 @@ namespace RealTPS
             tpsPyrolysed = state.TotalPyrolysed;
             result = new ShieldStepResult(state.Count);
             recipients = new Part[state.Count];
+            recipientJoules = new double[state.Count];
             routing = new ShieldRouting(state.Count);
 
             double[] normal, tangent;
@@ -1075,6 +1077,43 @@ namespace RealTPS
                 direction = -part.transform.TransformDirection(new Vector3((float)frame.Nx, (float)frame.Ny, (float)frame.Nz));
             }
             routing.Refresh(part, frame, state.Layout, direction, FaceRadius(), false);
+            int count = 0;
+            for (int i = 0; i < state.Count; i++)
+            {
+                double request = result.BreachEnergy[i];
+                if (!(request > 0.0))
+                {
+                    continue;
+                }
+                Part target = routing.Target(i);
+                if (target == null || target == part || target.vessel != vessel)
+                {
+                    continue;   // a ray that finds nothing moves nothing
+                }
+                int slot = 0;
+                while (slot < count && recipients[slot] != target)
+                {
+                    slot++;
+                }
+                if (slot == count)
+                {
+                    recipients[count] = target;
+                    recipientJoules[count] = 0.0;
+                    count++;
+                }
+                recipientJoules[slot] += request;
+            }
+            for (int slot = 0; slot < count; slot++)
+            {
+                Part target = recipients[slot];
+                double capacity = ShieldCoordinator.ExposedSkinCapacity(target);
+                if (capacity > 0.0)
+                {
+                    grantedBreach += ledger.Transfer(donor, donorCapacity, donorTemp,
+                        new ShieldCoordinator.Reservoir(target, false), capacity, target.skinTemperature, recipientJoules[slot], dt);
+                }
+                recipients[slot] = null;
+            }
         }
 
         /// <summary>Radius of the protected face, m: from the protected area, or the opening radius of a deployable shield.</summary>
