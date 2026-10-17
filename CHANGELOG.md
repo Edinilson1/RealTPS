@@ -3,6 +3,35 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.15.1 for KSP 1.12.x
+
+ - 2026-10-17
+
+### Changes since the previous version
+
+* Fixed: The cooling of a step could exceed what the material could give: its limit was worked out on capped
+  demands and applied to uncapped ones. The sink is now solved exactly.
+* Fixed: A cell that gave way in the middle of a step kept burning for the whole step, and pyrolysis took priority
+  over erosion when the material ran out. A step now runs up to each cell's first event, and the channels share
+  what's left by their rates.
+* Fixed: The bond estimate of a cell that gave way mid-step used the thickness left after the material was shed; it
+  now uses what the cell held until that moment.
+* Fixed: A shield with every cell exposed was declared failed at once, even with its structure still cold. Full
+  exposure now only lowers the part's limit to that of the bare structure; failure still waits for the structure to
+  give way.
+* Fixed: A failure or a separation in the middle of a physics tick could make the shields of a vessel step twice in
+  that tick.
+* Fixed: The cells kept evolving while the game integrated heat analytically after a long gap between updates (it
+  doesn't only do that at high time warp). RealTPS now reads the game's own flag.
+* Fixed: The heat passed through breaches depended on how many cells the same area was split into. What the cells
+  ask to pass on is summed per receiving part before the limit applies.
+* Changed: A shield whose physics step throws an error stops (INACTIVE: internal error) instead of failing again
+  every frame; its cells are still saved.
+
+### Known Issues
+
+* The switch to the game's analytic heating is noticed one physics tick late.
+
 ## v0.15.0 for KSP 1.12.x
 
  - 2026-10-14
