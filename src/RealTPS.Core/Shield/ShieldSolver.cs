@@ -263,6 +263,15 @@ namespace RealTPS.Core.Shield
                 Consume(material, state, input, result, dt, area, capacity, skin);
             }
 
+            // ----- received heat (diagnostic) -----
+            if (power > 0.0)
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    state.Received[i] += power * layout.AreaFraction(i) * w[i] * dt;
+                }
+            }
+
             if (layered)
             {
                 // ----- damage up to the first event; a cell that gives way sheds what it still holds -----

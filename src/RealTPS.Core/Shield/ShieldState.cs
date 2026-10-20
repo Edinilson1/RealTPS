@@ -151,6 +151,9 @@ namespace RealTPS.Core.Shield
         /// <summary>Estimated temperature of the substrate at the bond, K.</summary>
         public readonly double[] SubstrateTemp;
 
+        /// <summary>Heat received by the cell so far, J. Diagnostic only.</summary>
+        public readonly double[] Received;
+
         /// <summary>Structural integrity of the host behind its protection, 1 = sound, 0 = failed.</summary>
         public double Structure = 1.0;
 
@@ -178,6 +181,7 @@ namespace RealTPS.Core.Shield
             Integrity = new double[n];
             LayerTemp = new double[n];
             SubstrateTemp = new double[n];
+            Received = new double[n];
             for (int i = 0; i < n; i++)
             {
                 Integrity[i] = 1.0;
@@ -314,6 +318,7 @@ namespace RealTPS.Core.Shield
             node.AddValue("integrity", Pack(Integrity));
             node.AddValue("layerTemp", Pack(LayerTemp));
             node.AddValue("substrateTemp", Pack(SubstrateTemp));
+            node.AddValue("received", Pack(Received));
             node.AddValue("structure", R(Structure));
             node.AddValue("failure", Failure.ToString());
             node.AddValue("thermalInitialised", ThermalInitialised ? "true" : "false");
@@ -380,7 +385,8 @@ namespace RealTPS.Core.Shield
                 & Unpack(node, "pyrolysed", result.Pyrolysed, 0.0, 1.0e12, issues)
                 & Unpack(node, "integrity", result.Integrity, 0.0, 1.0, issues)
                 & Unpack(node, "layerTemp", result.LayerTemp, 0.0, 1.0e5, issues)
-                & Unpack(node, "substrateTemp", result.SubstrateTemp, 0.0, 1.0e5, issues);
+                & Unpack(node, "substrateTemp", result.SubstrateTemp, 0.0, 1.0e5, issues)
+                & Unpack(node, "received", result.Received, 0.0, 1.0e18, issues);
 
             double structure;
             if (!node.TryGetDouble("structure", out structure) || structure < 0.0 || structure > 1.0)

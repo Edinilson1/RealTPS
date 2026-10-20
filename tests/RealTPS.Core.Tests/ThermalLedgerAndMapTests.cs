@@ -167,6 +167,327 @@ namespace RealTPS.Core.Tests
         }
     }
 
+    public class ShieldMapTests
+    {
+        private static ShieldMapData Data(ShieldState state, MaterialDefinition m)
+        {
+            var data = new ShieldMapData(ShieldLayout.MaxCells);
+            data.Fill(m, state, new ShieldSettings { CellVariation = 0.0 });
+            return data;
+        }
+
+        private static void Point(ShieldLayout layout, int cell, out double x, out double y)
+        {
+            double r = layout.SampleRadius(cell);
+            x = r * Math.Cos(layout.Angle(cell));
+            y = r * Math.Sin(layout.Angle(cell));
+        }
+
+        [Fact]
+        public void TheFieldReturnsEachCellsValueAtItsSamplePointAndNeverLeavesTheRange()
+        {
+            var layout = new ShieldLayout(8, 2, 2.0);
+            var values = new double[layout.Count];
+            var flags = new CellFlags[layout.Count];
+            var random = new Random(7);
+            double min = double.MaxValue, max = double.MinValue;
+            for (int i = 0; i < layout.Count; i++)
+            {
+                values[i] = random.NextDouble();
+                min = Math.Min(min, values[i]);
+                max = Math.Max(max, values[i]);
+            }
+            for (int i = 0; i < layout.Count; i++)
+            {
+                double x, y;
+                Point(layout, i, out x, out y);
+                Assert.Equal(values[i], ShieldField.Sample(layout, values, flags, x, y), 9);
+            }
+            for (int k = 0; k < 20000; k++)
+            {
+                double x = random.NextDouble() * 2.0 - 1.0, y = random.NextDouble() * 2.0 - 1.0;
+                double v = ShieldField.Sample(layout, values, flags, x, y);
+                if (x * x + y * y > 1.0)
+                {
+                    Assert.True(double.IsNaN(v));
+                }
+                else
+                {
+                    Assert.InRange(v, min - 1.0e-12, max + 1.0e-12);    // nothing more extreme than a cell holds
+                }
+            }
+        }
+
+        [Fact]
+        public void TheFieldIsContinuousAcrossSectorsBandsAndTheWrap()
+        {
+            var layout = new ShieldLayout(8, 2, 2.0);
+            var values = new double[layout.Count];
+            var flags = new CellFlags[layout.Count];
+            var random = new Random(11);
+            for (int i = 0; i < layout.Count; i++)
+            {
+                values[i] = random.NextDouble();
+            }
+            const double step = 1.0e-4;
+            // Around circles (crossing every sector edge and the 2 pi wrap) and along radii (crossing every band edge).
+            foreach (double radius in new[] { 0.05, 0.2, 0.45, 0.7, 0.95 })
+            {
+                double previous = ShieldField.Sample(layout, values, flags, radius, 0.0);
+                for (double angle = step; angle <= 2.0 * Math.PI + step; angle += step)
+                {
+                    double v = ShieldField.Sample(layout, values, flags, radius * Math.Cos(angle), radius * Math.Sin(angle));
+                    Assert.True(Math.Abs(v - previous) < 2.0e-3, "jump around r=" + radius + " at angle " + angle);
+                    previous = v;
+                }
+            }
+            foreach (double angle in new[] { 0.0, 0.3, 1.9, 4.4 })
+            {
+                double previous = ShieldField.Sample(layout, values, flags, 0.0, 0.0);
+                for (double radius = step; radius < 1.0; radius += step)
+                {
+                    double v = ShieldField.Sample(layout, values, flags, radius * Math.Cos(angle), radius * Math.Sin(angle));
+                    Assert.True(Math.Abs(v - previous) < 5.0e-3, "jump along angle " + angle + " at r=" + radius);
+                    previous = v;
+                }
+            }
+        }
+
+        [Fact]
+        public void AUniformLayerIsAUniformField()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m, null, 0.6);
+            ShieldMapData data = Data(state, m);
+            var random = new Random(3);
+            for (int k = 0; k < 2000; k++)
+            {
+                double angle = random.NextDouble() * 2.0 * Math.PI, r = Math.Sqrt(random.NextDouble());
+                Assert.Equal(0.6, ShieldField.Sample(data.Layout, data.Values(ShieldView.Reserve), data.Flags, r * Math.Cos(angle), r * Math.Sin(angle)), 12);
+            }
+            // Kilograms differ between cells of different area; the view does not show kilograms.
+            Assert.NotEqual(state.Inventory[0], state.Inventory[16]);
+        }
+
+        [Fact]
+        public void FlaggedCellsAreFlatAndGiveNothingToTheirNeighbours()
+        {
+            var layout = new ShieldLayout(8, 2, 2.0);
+            var values = new double[layout.Count];
+            var flags = new CellFlags[layout.Count];
+            for (int i = 0; i < layout.Count; i++)
+            {
+                values[i] = 1.0;
+            }
+            const int breached = 9;                                 // middle band, sector 1
+            values[breached] = 0.0;
+            flags[breached] = CellFlags.Exposed;
+            var random = new Random(5);
+            for (int k = 0; k < 20000; k++)
+            {
+                double angle = random.NextDouble() * 2.0 * Math.PI, r = Math.Sqrt(random.NextDouble());
+                double x = r * Math.Cos(angle), y = r * Math.Sin(angle);
+                double v = ShieldField.Sample(layout, values, flags, x, y);
+                // Hard edge: 0 inside the breach, exactly 1 everywhere else. No soft patch, no half-breached neighbour.
+                Assert.Equal(layout.CellAt(x, y) == breached ? 0.0 : 1.0, v, 12);
+            }
+
+            // An intact cell surrounded by flagged ones shows its own value up to its edge.
+            for (int i = 0; i < layout.Count; i++)
+            {
+                values[i] = 0.1;
+                flags[i] = CellFlags.CriticalIntegrity;
+            }
+            values[breached] = 0.9;
+            flags[breached] = CellFlags.None;
+            for (int k = 0; k < 20000; k++)
+            {
+                double angle = random.NextDouble() * 2.0 * Math.PI, r = Math.Sqrt(random.NextDouble());
+                double x = r * Math.Cos(angle), y = r * Math.Sin(angle);
+                Assert.Equal(layout.CellAt(x, y) == breached ? 0.9 : 0.1, ShieldField.Sample(layout, values, flags, x, y), 12);
+            }
+        }
+
+        [Fact]
+        public void LegacyShieldsHaveNoDamageStateToShow()
+        {
+            MaterialDefinition legacy = LegacyProfile.Create(2.0, 200.0, 0.4, 3300.0);
+            ShieldState state = ShieldState.Uniform(ShieldLayout.Single(), new ShieldConstruction { Area = 2.0 }, 0.0, 200.0, 200.0);
+            ShieldMapData data = Data(state, legacy);
+            Assert.False(data.HasDamageState);
+            Assert.False(data.HasBondLimit);
+            Assert.Equal(0, data.ExposedCells);
+            Assert.True(double.IsNaN(data.Values(ShieldView.Integrity)[0]));
+            Assert.True(double.IsNaN(data.SmallestBondMargin));
+            Assert.Equal(-1, data.WorstCell(ShieldView.BondMargin));
+            Assert.Equal(CellFlags.LowReserve, data.Flags[0]);
+        }
+
+        [Fact]
+        public void TheImageShowsTheFaceFromOutsideWithSectorZeroAtTheTop()
+        {
+            const int size = 256;
+            int px, py;
+            // Sector zero (+x on the face) is at the top; increasing sectors (+y) are to the left.
+            Assert.True(ShieldMapRenderer.TexelFromFace(0.9, 0.0, size, out px, out py));
+            Assert.InRange(px, 127, 128);
+            Assert.InRange(py, 0, 20);
+            Assert.True(ShieldMapRenderer.TexelFromFace(0.0, 0.9, size, out px, out py));
+            Assert.InRange(px, 0, 20);
+            Assert.InRange(py, 127, 128);
+            Assert.False(ShieldMapRenderer.TexelFromFace(1.5, 0.0, size, out px, out py));
+
+            var layout = new ShieldLayout(8, 2, 2.0);
+            var cells = new int[size * size];
+            ShieldMapRenderer.CellMap(layout, size, cells);
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    double fx, fy, u, v;
+                    ShieldMapRenderer.FaceFromTexel(x, y, size, out fx, out fy);
+                    // Drawing and hit test agree at every texel centre, through the same transform.
+                    Assert.Equal(layout.CellAt(fx, fy), cells[y * size + x]);
+                    Assert.True(ShieldMapRenderer.TexelFromFace(fx, fy, size, out px, out py));
+                    Assert.Equal(x, px);
+                    Assert.Equal(y, py);
+                    // The overlay contract: the UV of a face point addresses the texel of that point (v runs up).
+                    ShieldMapRenderer.UvFromFace(fx, fy, out u, out v);
+                    Assert.Equal(x, (int)Math.Floor(u * size));
+                    Assert.Equal(y, (int)Math.Floor((1.0 - v) * size));
+                }
+            }
+            // A mirrored face (sector direction reversed) mirrors the picture left to right.
+            Assert.Equal(layout.CellAt(0.5, 0.3), cells[CellIndex(0.5, 0.3, size)]);
+            Assert.NotEqual(cells[CellIndex(0.5, 0.3, size)], cells[CellIndex(0.5, -0.3, size)]);
+            // Shifting by one sector turns the picture by one sector.
+            double turn = 2.0 * Math.PI / 8.0;
+            Assert.Equal((layout.Sector(layout.CellAt(0.6, 0.1)) + 1) % 8, layout.Sector(layout.CellAt(0.6 * Math.Cos(turn) - 0.1 * Math.Sin(turn), 0.6 * Math.Sin(turn) + 0.1 * Math.Cos(turn))));
+        }
+
+        private static int CellIndex(double x, double y, int size)
+        {
+            int px, py;
+            ShieldMapRenderer.TexelFromFace(x, y, size, out px, out py);
+            return py * size + px;
+        }
+
+        [Fact]
+        public void AHealthyShieldIsDrawnWithoutDivisionsAndABreachWithAHardEdge()
+        {
+            const int size = 128;
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m, null, 0.8);
+            ShieldMapData data = Data(state, m);
+            var cells = new int[size * size];
+            var rgba = new byte[size * size * 4];
+            ShieldMapRenderer.CellMap(data.Layout, size, cells);
+            MapScale scale = MapScale.For(ShieldView.Reserve, 520.0);
+
+            ShieldMapRenderer.Render(data, ShieldView.Reserve, scale, cells, size, false, -1, rgba);
+            int first = -1;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] < 0)
+                {
+                    Assert.Equal(0, rgba[p * 4 + 3]);               // transparent outside the disc
+                    continue;
+                }
+                if (first < 0)
+                {
+                    first = p;
+                }
+                for (int ch = 0; ch < 4; ch++)
+                {
+                    Assert.Equal(rgba[first * 4 + ch], rgba[p * 4 + ch]);   // one colour: no borders, no cells
+                }
+            }
+
+            // The grid toggle brings the borders back.
+            ShieldMapRenderer.Render(data, ShieldView.Reserve, scale, cells, size, true, -1, rgba);
+            int black = 0;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] >= 0 && rgba[p * 4] == 0 && rgba[p * 4 + 1] == 0 && rgba[p * 4 + 2] == 0)
+                {
+                    black++;
+                }
+            }
+            Assert.True(black > 300);
+
+            // One exposed cell: hatched grey inside, outlined, and its neighbours keep the healthy colour.
+            state.Inventory[9] = 0.0;
+            data = Data(state, m);
+            ShieldMapRenderer.Render(data, ShieldView.Reserve, scale, cells, size, false, -1, rgba);
+            int grey = 0, hatch = 0, healthy = 0, other = 0;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] < 0)
+                {
+                    continue;
+                }
+                byte r = rgba[p * 4], g = rgba[p * 4 + 1], b = rgba[p * 4 + 2];
+                bool isHealthy = r == rgba[first * 4] && g == rgba[first * 4 + 1] && b == rgba[first * 4 + 2];
+                if (cells[p] == 9)
+                {
+                    if (r == 56 && g == 59 && b == 66)
+                    {
+                        grey++;
+                    }
+                    else if (r == 13 && g == 13 && b == 13)
+                    {
+                        hatch++;
+                    }
+                    Assert.False(isHealthy);
+                }
+                else if (isHealthy)
+                {
+                    healthy++;
+                }
+                else
+                {
+                    other++;                                        // only the outline of the breach
+                    Assert.True(r == 0 && g == 0 && b == 0);
+                }
+            }
+            Assert.True(grey > 50 && hatch > 10);
+            Assert.True(healthy > 5000);
+            Assert.InRange(other, 1, 400);
+
+            // The selected cell is outlined in its own colour.
+            ShieldMapRenderer.Render(data, ShieldView.Reserve, scale, cells, size, false, 3, rgba);
+            int blue = 0;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] == 3 && rgba[p * 4 + 2] == 255)
+                {
+                    blue++;
+                }
+            }
+            Assert.True(blue > 20);
+            Assert.Throws<ArgumentException>(() => ShieldMapRenderer.Render(data, ShieldView.Reserve, scale, cells, size, false, -1, new byte[10]));
+        }
+
+        [Fact]
+        public void ScalesAreFixedAndPointTheRightWay()
+        {
+            MapScale reserve = MapScale.For(ShieldView.Reserve, 520.0);
+            Assert.Equal(1.0, reserve.Goodness(1.0));
+            Assert.Equal(0.0, reserve.Goodness(0.0));
+            Assert.Equal(0.0, reserve.Goodness(-3.0));
+            MapScale temperature = MapScale.For(ShieldView.SubstrateTemp, 520.0);
+            Assert.Equal(1.0, temperature.Goodness(250.0));
+            Assert.Equal(0.0, temperature.Goodness(520.0));
+            Assert.Equal(0.0, temperature.Goodness(900.0));
+            MapScale margin = MapScale.For(ShieldView.BondMargin, 520.0);
+            Assert.Equal(0.0, margin.Goodness(-50.0));
+            Assert.Equal(1.0, margin.Goodness(400.0));
+            Assert.Equal(0.0, MapScale.For(ShieldView.Received, 0.0).Goodness(double.NaN));
+            Assert.True(ShieldMapData.LowerIsWorse(ShieldView.BondMargin));
+            Assert.False(ShieldMapData.LowerIsWorse(ShieldView.SubstrateTemp));
+        }
+    }
+
     public class HostGeometryTests
     {
         private const string Host = @"
