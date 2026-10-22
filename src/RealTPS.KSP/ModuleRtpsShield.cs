@@ -275,10 +275,30 @@ namespace RealTPS
             get { return result; }
         }
 
+        internal Incidence Flow
+        {
+            get { return flow; }
+        }
+
+        internal FaceFrame Frame
+        {
+            get { return frame; }
+        }
+
         /// <summary>True while the physics step runs for this shield (not packed, not under analytic integration).</summary>
         internal bool IsStepping
         {
             get { return stepping; }
+        }
+
+        internal bool IsLegacy
+        {
+            get { return legacyMode; }
+        }
+
+        internal string MaterialDisplayName
+        {
+            get { return DisplayName(); }
         }
 
         // ================================================================================================
@@ -433,6 +453,13 @@ namespace RealTPS
                 RefreshUi();
             }
             // In flight the request is ignored: the committed profile stays.
+        }
+
+        /// <summary>Opens the shield diagnostics window on this part.</summary>
+        [KSPEvent(guiActive = true, guiActiveEditor = false, guiActiveUnfocused = true, unfocusedRange = 50f, guiName = "#LOC_RTPS_ui_open_diagnostics")]
+        public void OpenDiagnostics()
+        {
+            ShieldDiagnostics.Show(this);
         }
 
         // ----- editor -----
@@ -1376,6 +1403,11 @@ namespace RealTPS
             if (breach != null)
             {
                 breach.guiActive = flight && active && PhysicsGlobals.ThermalDataDisplay;
+            }
+            BaseEvent diagnostics = Events["OpenDiagnostics"];
+            if (diagnostics != null)
+            {
+                diagnostics.guiActive = flight && active && state != null;
             }
 
             if (flight && active && charModule != null && material.Ablation != null && tpsCapacity > 0.0)
