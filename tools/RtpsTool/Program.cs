@@ -19,6 +19,7 @@ namespace RtpsTool
     ///   generate  - write the generated ModuleManager files (use --check to only compare)
     ///   simulate  - run the calibration mission matrix and print a Markdown table (--tilt N: face tilted N degrees;
     ///               --preset NAME: the settings of a shipped difficulty preset, cell variation included)
+    ///   maps      - render the shield map of fixture states to PNG (--out DIR, default artifacts/maps)
     /// </summary>
     internal static class Program
     {
@@ -72,6 +73,17 @@ namespace RtpsTool
                     ShieldSettings settings = null;
                     MissionMatrix.Print(repo, Console.Out, TiltArgument(args), settings);
                     return 0;
+                }
+
+                case "maps":
+                {
+                    if (failed)
+                    {
+                        return 1;
+                    }
+                    int index = Array.IndexOf(args, "--out");
+                    string outDir = index >= 0 && index + 1 < args.Length ? args[index + 1] : Path.Combine(root, "artifacts", "maps");
+                    return MapRender.Run(repo, outDir);
                 }
 
                 default:
