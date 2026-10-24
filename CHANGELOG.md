@@ -3,6 +3,35 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.16.0 for KSP 1.12.x
+
+ - 2026-10-24
+
+### Changes since the previous version
+
+* Added: The shield window, from the toolbar (flight and map view) or with Shield diagnostics in a shield's part
+  menu, also on a nearby vessel within 50 m:
+  - a map of the protected face seen from outside, with sector 1 at the top and the cells numbered
+    counter-clockwise;
+  - views for reserve, integrity, bond temperature, bond margin and heat received, smoothed while the shield is
+    healthy (a note under the legend says so); a cell with an alert (exposed, critical integrity, low reserve, bond
+    at risk) is drawn flat, with a hard edge and a pattern, and Grid draws every cell with its number;
+  - markers on the rim for the wind and for the planet, hidden when they don't project on the face;
+  - flight numbers: skin and internal temperature against their limits, dynamic pressure, surface speed, face
+    tilt, cooling and breach heat;
+  - the cell you click, and alert counters with the smallest bond margin of the protected cells and the worst cell
+    of the view;
+  - whether the data is live, or frozen on rails and in time warp, and arrows to switch between the shields of the
+    vessel.
+* Added: The shield shown in the window is highlighted on the craft.
+* Added: The window only blocks camera and part clicks under it, so the craft stays controllable, and it hides with
+  the rest of the interface (F2).
+* Optimized: The window reads the shield 2.5 times a second and redraws the map only when something changed.
+
+### Known Issues
+
+* The map is exact to one texel: right on the edge between two cells, a click may pick the neighbouring one.
+
 ## v0.15.1 for KSP 1.12.x
 
  - 2026-10-17
