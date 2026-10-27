@@ -309,6 +309,54 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void FlagsComeFromTheCellsOwnValuesAndNeverClearByGettingWorse()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();         // bond limit 520 K
+            ShieldState state = ShieldSolverTests.Stocked(m);
+            state.ThermalInitialised = true;
+            for (int i = 0; i < state.Count; i++)
+            {
+                state.SubstrateTemp[i] = 300.0;
+            }
+            state.Inventory[1] = 0.0;                               // exposed
+            state.Integrity[2] = 0.19;                              // critical
+            state.Integrity[3] = 0.2;                               // not critical
+            state.Inventory[4] = state.Capacity[4] * 0.09;          // low reserve
+            state.Inventory[5] = state.Capacity[5] * 0.10;          // not low
+            state.SubstrateTemp[6] = 420.0;                         // margin exactly 100: at risk
+            state.SubstrateTemp[7] = 419.9;                         // margin 100.1: not at risk
+            state.SubstrateTemp[8] = 560.0;                         // margin -40: still at risk
+            state.Integrity[9] = 0.1;
+            state.Inventory[9] = state.Capacity[9] * 0.01;
+            state.SubstrateTemp[9] = 700.0;                         // all three at once
+            ShieldMapData data = Data(state, m);
+
+            Assert.Equal(CellFlags.Exposed, data.Flags[1]);
+            Assert.Equal(CellFlags.CriticalIntegrity, data.Flags[2]);
+            Assert.Equal(CellFlags.None, data.Flags[3]);
+            Assert.Equal(CellFlags.LowReserve, data.Flags[4]);
+            Assert.Equal(CellFlags.None, data.Flags[5]);
+            Assert.Equal(CellFlags.BondAtRisk, data.Flags[6]);
+            Assert.Equal(CellFlags.None, data.Flags[7]);
+            Assert.Equal(CellFlags.BondAtRisk, data.Flags[8]);
+            Assert.Equal(CellFlags.CriticalIntegrity | CellFlags.LowReserve | CellFlags.BondAtRisk, data.Flags[9]);
+            Assert.Equal(1, data.ExposedCells);
+            Assert.Equal(2, data.CriticalCells);
+            Assert.Equal(2, data.LowReserveCells);
+            Assert.Equal(3, data.BondRiskCells);
+            Assert.Equal(state.Layout.AreaFraction(1), data.ExposedArea, 12);
+            Assert.Equal(520.0 - 700.0, data.SmallestBondMargin, 9);
+
+            // "Worst" is defined per quantity.
+            Assert.Equal(1, data.WorstCell(ShieldView.Reserve));
+            Assert.Equal(9, data.WorstCell(ShieldView.Integrity));
+            Assert.Equal(9, data.WorstCell(ShieldView.BondMargin));
+            Assert.Equal(9, data.WorstCell(ShieldView.SubstrateTemp));
+            state.Received[12] = 9.0e9;
+            Assert.Equal(12, Data(state, m).WorstCell(ShieldView.Received));
+        }
+
+        [Fact]
         public void LegacyShieldsHaveNoDamageStateToShow()
         {
             MaterialDefinition legacy = LegacyProfile.Create(2.0, 200.0, 0.4, 3300.0);
