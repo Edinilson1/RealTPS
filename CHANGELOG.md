@@ -3,6 +3,20 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.16.1 for KSP 1.12.x
+
+ - 2026-10-27
+
+### Changes since the previous version
+
+* Changed: The shield window was redone: dark panels, summary cards at the top (mean integrity, material left, face
+  exposed, structure), tabs for the views, bars that fill up towards each limit, and a tooltip with the numbers of
+  the cell under the cursor. The window shrinks on screens too small for it.
+* Added: A toolbar icon of its own, a shield face with one hot cell; hovering it names the window.
+* Fixed: A bond already past its limit dropped out of the "bond at risk" count. An alert no longer clears by
+  getting worse.
+* Changed: An error in the window closes it and is logged once.
+
 ## v0.16.0 for KSP 1.12.x
 
  - 2026-10-24
