@@ -4,6 +4,75 @@ using RealTPS.Core.Physics;
 
 namespace RealTPS.Core.Shield
 {
+    /// <summary>
+    /// Per-save choices that scale or switch parts of the damage model (difficulty). They never change the
+    /// material physics (consumption, the sink, conduction). The named sets live in
+    /// <see cref="DifficultyPresets"/>; the defaults here are the calibrated values (the Realistic preset).
+    /// </summary>
+    public sealed class ShieldSettings
+    {
+        /// <summary>Multiplier on every damage rate.</summary>
+        public double Severity = 1.0;
+
+        /// <summary>Cells lose integrity to surface over-temperature and to a hot bond.</summary>
+        public bool Damage = true;
+
+        /// <summary>Exposed, hot structure ends in the failure of the shield as a whole.</summary>
+        public bool Failure = true;
+
+        /// <summary>Heat falling on exposed cells is passed on to what lies behind them.</summary>
+        public bool Transfer = true;
+
+        /// <summary>Fixed difference between the limits of the cells of one shield, 0..0.10 (0.02 = 2 %).</summary>
+        public double CellVariation = 0.02;
+
+        /// <summary>Time for surface deterioration to destroy a cell held at the native fallback, s.</summary>
+        public double SurfaceDamageTime = ShieldSolver.SurfaceDamageTime;
+
+        /// <summary>Time for a bond held at its limit to fail, s.</summary>
+        public double BondDamageTime = ShieldSolver.BondDamageTime;
+
+        /// <summary>Time for fully exposed structure at twice its limit to fail, s.</summary>
+        public double StructureDamageTime = ShieldSolver.StructureDamageTime;
+
+        /// <summary>Share of the heat falling on an exposed cell that is passed on, 0..1.</summary>
+        public double BreachShare = ShieldSolver.BreachShare;
+
+        public static readonly ShieldSettings Default = new ShieldSettings();
+
+        public void CopyFrom(ShieldSettings other)
+        {
+            if (other == null)
+            {
+                throw new ArgumentNullException(nameof(other));
+            }
+            Severity = other.Severity;
+            Damage = other.Damage;
+            Failure = other.Failure;
+            Transfer = other.Transfer;
+            CellVariation = other.CellVariation;
+            SurfaceDamageTime = other.SurfaceDamageTime;
+            BondDamageTime = other.BondDamageTime;
+            StructureDamageTime = other.StructureDamageTime;
+            BreachShare = other.BreachShare;
+        }
+
+        public ShieldSettings Clone()
+        {
+            var copy = new ShieldSettings();
+            copy.CopyFrom(this);
+            return copy;
+        }
+
+        /// <summary>True when every value is the same as in <paramref name="other"/>.</summary>
+        public bool SameAs(ShieldSettings other)
+        {
+            return other != null && Severity == other.Severity && Damage == other.Damage && Failure == other.Failure
+                && Transfer == other.Transfer && CellVariation == other.CellVariation && SurfaceDamageTime == other.SurfaceDamageTime
+                && BondDamageTime == other.BondDamageTime && StructureDamageTime == other.StructureDamageTime && BreachShare == other.BreachShare;
+        }
+    }
+
     /// <summary>Inputs of one step of a shield. All SI; the KSP adapter converts.</summary>
     public struct ShieldStepInput
     {
@@ -30,6 +99,8 @@ namespace RealTPS.Core.Shield
 
         /// <summary>How the flow meets the protected face.</summary>
         public Incidence Flow;
+
+        public ShieldSettings Settings;
     }
 
     /// <summary>
@@ -141,6 +212,9 @@ namespace RealTPS.Core.Shield
     /// </summary>
     public static class ShieldSolver
     {
+        // The four constants below are the calibrated defaults (Realistic); each difficulty preset may set
+        // its own value through ShieldSettings.
+
         /// <summary>Time for surface deterioration to destroy a cell held at the native fallback, s. Calibration.</summary>
         public const double SurfaceDamageTime = 8.0;
 
@@ -206,6 +280,11 @@ namespace RealTPS.Core.Shield
                 return;
             }
 
+            ShieldSettings settings = input.Settings ?? ShieldSettings.Default;
+            double surfaceTime = PositiveOr(settings.SurfaceDamageTime, SurfaceDamageTime);
+            double bondTime = PositiveOr(settings.BondDamageTime, BondDamageTime);
+            double structureTime = PositiveOr(settings.StructureDamageTime, StructureDamageTime);
+            double breachShare = double.IsNaN(settings.BreachShare) ? BreachShare : Math.Max(0.0, Math.Min(1.0, settings.BreachShare));
             ShieldLayout layout = state.Layout;
             ShieldConstruction construction = state.Construction;
             double dt = Math.Min(input.Dt, AblationSolver.MaxStep);
@@ -733,6 +812,11 @@ namespace RealTPS.Core.Shield
         private static bool Usable(double value)
         {
             return !double.IsNaN(value) && !double.IsInfinity(value) && value > 0.0;
+        }
+
+        private static double PositiveOr(double value, double fallback)
+        {
+            return Usable(value) ? value : fallback;
         }
     }
 }

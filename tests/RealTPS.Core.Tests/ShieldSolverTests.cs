@@ -726,6 +726,25 @@ namespace RealTPS.Core.Tests
             Assert.True(result.ExposedTime[2] > 0.0);
         }
 
+        [Fact]
+        public void DifficultyCanSwitchDamageOffAndScaleIt()
+        {
+            MaterialDefinition tile = TestMaterials.Tile();
+            ShieldState off = Stocked(tile);
+            ShieldState one = Stocked(tile);
+            ShieldState two = Stocked(tile);
+            var result = new ShieldStepResult(off.Count);
+            ShieldStepInput input = Input(1700.0);
+            input.Settings = new ShieldSettings { Damage = false, CellVariation = 0.0 };
+            ShieldSolver.Step(tile, off, input, result);
+            input.Settings = new ShieldSettings { CellVariation = 0.0 };
+            ShieldSolver.Step(tile, one, input, result);
+            input.Settings = new ShieldSettings { Severity = 2.0, CellVariation = 0.0 };
+            ShieldSolver.Step(tile, two, input, result);
+            Assert.Equal(1.0, off.MeanIntegrity, 12);
+            Assert.Equal(2.0 * (1.0 - one.MeanIntegrity), 1.0 - two.MeanIntegrity, 12);
+        }
+
         // ----- exposure, leak, failure -----
 
         [Fact]
@@ -822,6 +841,35 @@ namespace RealTPS.Core.Tests
             Assert.Equal(0.0, result.HeatAbsorbed);                 // the sink has stopped
             Assert.Equal(state.Construction.BareEmissivity, result.Emissivity, 12);
             Assert.True(result.BreachTotal > 0.0);                  // and the whole face leaks
+        }
+
+        [Fact]
+        public void WithFailureSwitchedOffTheShieldNeverFails()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = Stocked(m);
+            for (int i = 0; i < 24; i++)
+            {
+                state.Inventory[i] = 0.0;
+            }
+            var result = new ShieldStepResult(state.Count);
+            ShieldStepInput input = Input(1900.0, 0.05, 6.0e6);
+            input.Settings = new ShieldSettings { Failure = false, CellVariation = 0.0 };
+            for (int i = 0; i < 4000; i++)
+            {
+                ShieldSolver.Step(m, state, input, result);
+            }
+            Assert.Equal(1.0, state.Structure);
+            Assert.False(result.FailureDue);
+            Assert.Equal(m.MaxSurfaceTemp, result.NativeLimit);     // one cell still protects
+            state.Inventory[24] = 0.0;                              // the last cell
+            for (int i = 0; i < 4000; i++)
+            {
+                ShieldSolver.Step(m, state, input, result);
+            }
+            Assert.False(result.FailureDue);                         // not even a total loss enacts a failure
+            Assert.False(state.Failed);
+            Assert.Equal(state.Construction.CarrierLimitTemp, result.NativeLimit);   // but the bare carrier's limit applies
         }
 
         [Fact]
