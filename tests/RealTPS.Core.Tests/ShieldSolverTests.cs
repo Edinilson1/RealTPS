@@ -745,6 +745,24 @@ namespace RealTPS.Core.Tests
             Assert.Equal(2.0 * (1.0 - one.MeanIntegrity), 1.0 - two.MeanIntegrity, 12);
         }
 
+        [Fact]
+        public void CellBiasIsFixedSmallAndOptional()
+        {
+            Assert.Equal(1.0, ShieldSolver.CellBias(0u, 3, 0.02));
+            Assert.Equal(1.0, ShieldSolver.CellBias(77u, 3, 0.0));
+            bool differs = false;
+            for (int cell = 0; cell < 25; cell++)
+            {
+                double bias = ShieldSolver.CellBias(123456u, cell, 0.02);
+                Assert.InRange(bias, 0.98, 1.02);
+                Assert.Equal(bias, ShieldSolver.CellBias(123456u, cell, 0.02));     // never rerolled
+                differs |= Math.Abs(bias - ShieldSolver.CellBias(123456u, (cell + 1) % 25, 0.02)) > 1.0e-6;
+                Assert.InRange(ShieldSolver.CellBias(123456u, cell, 5.0), 0.90, 1.10);
+            }
+            Assert.True(differs);
+            Assert.NotEqual(ShieldSolver.CellBias(1u, 4, 0.02), ShieldSolver.CellBias(2u, 4, 0.02));
+        }
+
         // ----- exposure, leak, failure -----
 
         [Fact]

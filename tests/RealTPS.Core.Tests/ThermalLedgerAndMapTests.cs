@@ -357,6 +357,30 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void TheBondMarginUsesEachCellsOwnLimit()
+        {
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m);
+            state.ThermalInitialised = true;
+            state.Seed = 4242u;
+            for (int i = 0; i < state.Count; i++)
+            {
+                state.SubstrateTemp[i] = 400.0;
+            }
+            var data = new ShieldMapData(ShieldLayout.MaxCells);
+            var settings = new ShieldSettings { CellVariation = 0.05 };
+            data.Fill(m, state, settings);
+            bool differs = false;
+            for (int i = 0; i < state.Count; i++)
+            {
+                double expected = 520.0 * ShieldSolver.CellBias(4242u, i, 0.05) - 400.0;
+                Assert.Equal(expected, data.Values(ShieldView.BondMargin)[i], 9);
+                differs |= Math.Abs(expected - 120.0) > 1.0;
+            }
+            Assert.True(differs);
+        }
+
+        [Fact]
         public void LegacyShieldsHaveNoDamageStateToShow()
         {
             MaterialDefinition legacy = LegacyProfile.Create(2.0, 200.0, 0.4, 3300.0);

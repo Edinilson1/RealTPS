@@ -680,6 +680,33 @@ namespace RealTPS.Core.Shield
             return ramp * Math.Exp(exponent) / damageTime;
         }
 
+        /// <summary>
+        /// Fixed factor on the limits of one cell, <c>1 +- variation</c>: a pure function of the shield's seed
+        /// and the cell index on its frozen grid. A seed of 0 or a variation of 0 gives exactly 1.
+        /// </summary>
+        public static double CellBias(uint seed, int cell, double variation)
+        {
+            if (seed == 0u || !(variation > 0.0))
+            {
+                return 1.0;
+            }
+            if (variation > 0.10)
+            {
+                variation = 0.10;
+            }
+            unchecked
+            {
+                uint h = seed * 2654435761u + (uint)cell * 40503u + 0x9E3779B9u;
+                h ^= h >> 16;
+                h *= 0x85EBCA6Bu;
+                h ^= h >> 13;
+                h *= 0xC2B2AE35u;
+                h ^= h >> 16;
+                double unit = h / 4294967295.0;            // 0..1
+                return 1.0 + variation * (2.0 * unit - 1.0);
+            }
+        }
+
         // ----- failure -----
 
         /// <summary>

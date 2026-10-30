@@ -159,6 +159,9 @@ namespace RealTPS.Core.Shield
 
         public ShieldFailure Failure = ShieldFailure.None;
 
+        /// <summary>Fixed per part; seeds the cell-to-cell variation. 0 = not assigned yet.</summary>
+        public uint Seed;
+
         /// <summary>False until the layer temperatures have been set from the part once.</summary>
         public bool ThermalInitialised;
 
@@ -321,6 +324,7 @@ namespace RealTPS.Core.Shield
             node.AddValue("received", Pack(Received));
             node.AddValue("structure", R(Structure));
             node.AddValue("failure", Failure.ToString());
+            node.AddValue("seed", Seed.ToString(CultureInfo.InvariantCulture));
             node.AddValue("thermalInitialised", ThermalInitialised ? "true" : "false");
             return node;
         }
@@ -400,6 +404,12 @@ namespace RealTPS.Core.Shield
                 issues.Add(new ValidationIssue(true, "shield state", "unknown failure mode"));
                 ok = false;
             }
+            uint seed;
+            if (!uint.TryParse(node.GetValue("seed") ?? string.Empty, NumberStyles.Integer, CultureInfo.InvariantCulture, out seed))
+            {
+                issues.Add(new ValidationIssue(true, "shield state", "invalid seed"));
+                ok = false;
+            }
             string initialised = (node.GetValue("thermalInitialised") ?? string.Empty).Trim();
             if (initialised != "true" && initialised != "false")
             {
@@ -421,6 +431,7 @@ namespace RealTPS.Core.Shield
             }
             result.Structure = structure;
             result.Failure = failure;
+            result.Seed = seed;
             result.ThermalInitialised = initialised == "true";
             state = result;
             return ReadStatus.Ok;
