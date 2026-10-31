@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using RealTPS.Core.Cfg;
 using RealTPS.Core.Materials;
+using RealTPS.Core.Shield;
 using UnityEngine;
 
 namespace RealTPS
@@ -69,9 +70,26 @@ namespace RealTPS
     public static class RtpsCatalogue
     {
         private static MaterialCatalogue current;
+        private static DifficultyPresets difficulty = DifficultyPresets.BuiltIn();
         private static bool researchGating = true;
         private static bool telemetryLog;
         private static bool hooked;
+
+        /// <summary>
+        /// The difficulty presets: built in, overridden by <c>RTPS_DIFFICULTY</c> nodes. Never null. Loaded with the
+        /// catalogue, reloaded with it.
+        /// </summary>
+        public static DifficultyPresets Difficulty
+        {
+            get
+            {
+                if (current == null)
+                {
+                    Reload();
+                }
+                return difficulty;
+            }
+        }
 
         /// <summary>The loaded catalogue. Never null; empty when the game database is not available.</summary>
         public static MaterialCatalogue Current

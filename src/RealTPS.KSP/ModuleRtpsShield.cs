@@ -1062,6 +1062,7 @@ namespace RealTPS
                 OxygenAtmosphere = InOxygenAtmosphere(),
                 ConvectivePower = part.thermalConvectionFlux * 1000.0,
                 Flow = flow,
+                Settings = RtpsDifficulty.CurrentSettings
             };
             ShieldSolver.Step(material, state, input, result);
 
@@ -1183,7 +1184,7 @@ namespace RealTPS
                 {
                     breachAnnounced = true;
                     RtpsLog.Info(PartLabel() + ": first cell exposed at skin " + F(part.skinTemperature) + " K, " + F(100.0 * RemainingFraction) + " % of the inventory left");
-                    if (vessel == FlightGlobals.ActiveVessel)
+                    if (RtpsDifficulty.Current.warnings && vessel == FlightGlobals.ActiveVessel)
                     {
                         ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_breach", part.partInfo.title), 8f, ScreenMessageStyle.UPPER_CENTER);
                     }
@@ -1244,7 +1245,7 @@ namespace RealTPS
             Notify("protection_lost");
             RtpsLog.Info(PartLabel() + ": shield failed (protection lost) at skin " + F(part.skinTemperature) + " K, exposed "
                 + F(100.0 * tpsExposedArea) + " %");
-            if (wasActive)
+            if (wasActive && RtpsDifficulty.Current.warnings)
             {
                 ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_protection_lost", title), 10f, ScreenMessageStyle.UPPER_CENTER);
             }
