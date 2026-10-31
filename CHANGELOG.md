@@ -3,6 +3,23 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.17.0 for KSP 1.12.x
+
+ - 2026-10-31
+
+### Changes since the previous version
+
+* Added: Difficulty options per save, in a new Thermal Protection section of the game's difficulty settings:
+  Friendly, Realistic, Strict and Custom. They only change the damage model, never how the materials burn or
+  insulate: how fast surfaces, bonds and structures give way, how much heat gets through breaches, and switches
+  for damage, shield failure and breach heat. Custom sets each value by hand.
+* Added: Variation between cells: a small fixed difference between the limits of the cells of one shield, so that
+  it doesn't fail everywhere at once.
+* Added: A Warnings switch for the on-screen breach and failure messages.
+* Added: The shield window shows the difficulty in use.
+* Changed: The bond margin of a cell is measured against that cell's own limit, which can now differ from its
+  neighbours'.
+
 ## v0.16.1 for KSP 1.12.x
 
  - 2026-10-27
