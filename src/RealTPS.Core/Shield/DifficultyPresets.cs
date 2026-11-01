@@ -58,6 +58,18 @@ namespace RealTPS.Core.Shield
 
         private readonly ShieldSettings[] values = new ShieldSettings[Named.Length];
 
+        /// <summary>Preset of a new game on the stock "Easy" level.</summary>
+        public DifficultyPreset Easy { get; private set; }
+
+        /// <summary>Preset of a new game on the stock "Normal" level.</summary>
+        public DifficultyPreset Normal { get; private set; }
+
+        /// <summary>Preset of a new game on the stock "Moderate" level.</summary>
+        public DifficultyPreset Moderate { get; private set; }
+
+        /// <summary>Preset of a new game on the stock "Hard" level.</summary>
+        public DifficultyPreset Hard { get; private set; }
+
         /// <summary>Warnings raised while reading the nodes. Never errors: the values in use are always valid.</summary>
         public List<ValidationIssue> Issues { get; } = new List<ValidationIssue>();
 
@@ -120,6 +132,18 @@ namespace RealTPS.Core.Shield
                 throw new ArgumentOutOfRangeException(nameof(preset), "only the named presets have values of their own");
             }
             return values[(int)preset];
+        }
+
+        /// <summary>The preset a new game takes for a stock difficulty level: 0 Easy, 1 Normal, 2 Moderate, 3 Hard.</summary>
+        public DifficultyPreset ForLevel(int level)
+        {
+            switch (level)
+            {
+                case 0: return Easy;
+                case 2: return Moderate;
+                case 3: return Hard;
+                default: return Normal;
+            }
         }
 
         /// <summary>Clamps every value into its range. NaN takes the calibrated default.</summary>
