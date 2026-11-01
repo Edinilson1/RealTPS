@@ -136,11 +136,18 @@ namespace RealTPS
         public static void Reload()
         {
             var nodes = new List<CfgNode>();
+            var difficultyNodes = new List<CfgNode>();
             researchGating = true;
             telemetryLog = false;
 
             if (GameDatabase.Instance != null)
             {
+                ConfigNode[] presets = GameDatabase.Instance.GetConfigNodes(DifficultyPresets.NodeName);
+                for (int i = 0; i < presets.Length; i++)
+                {
+                    difficultyNodes.Add(ConfigNodeBridge.ToCfg(presets[i]));
+                }
+
                 ConfigNode[] materials = GameDatabase.Instance.GetConfigNodes(MaterialParser.NodeName);
                 for (int i = 0; i < materials.Length; i++)
                 {
@@ -192,6 +199,22 @@ namespace RealTPS
                 }
             }
             RtpsLog.Info("catalogue loaded: " + current.Materials.Count + " material profile(s), research gating " + (researchGating ? "on" : "off"));
+
+            try
+            {
+                difficulty = DifficultyPresets.Load(difficultyNodes);
+            }
+            catch (Exception e)
+            {
+                RtpsLog.Error("difficulty presets could not be loaded, built-in values in use: " + e);
+                difficulty = DifficultyPresets.BuiltIn();
+            }
+            for (int i = 0; i < difficulty.Issues.Count; i++)
+            {
+                RtpsLog.Warn("difficulty: " + difficulty.Issues[i]);
+            }
+            RtpsLog.Info("difficulty presets loaded from " + difficultyNodes.Count + " " + DifficultyPresets.NodeName + " node(s); new games: easy "
+                + difficulty.Easy + ", normal " + difficulty.Normal + ", moderate " + difficulty.Moderate + ", hard " + difficulty.Hard);
         }
 
         private static readonly DatabaseHook Hook = new DatabaseHook();

@@ -260,5 +260,32 @@ namespace RealTPS.Core.Tests
             }
             Assert.DoesNotContain("@cost - =", text);
         }
+
+        [Fact]
+        public void TheShippedDifficultyPresetsStateTheBuiltInValues()
+        {
+            CfgNode root = CfgParser.Parse(Read("GameData/RealTPS/Difficulty/DifficultyPresets.cfg"));
+            List<CfgNode> nodes = root.GetNodes(RealTPS.Core.Shield.DifficultyPresets.NodeName);
+            Assert.Single(nodes);
+            var shipped = RealTPS.Core.Shield.DifficultyPresets.Load(nodes);
+            Assert.Empty(shipped.Issues);
+            var builtIn = RealTPS.Core.Shield.DifficultyPresets.BuiltIn();
+            foreach (var preset in RealTPS.Core.Shield.DifficultyPresets.Named)
+            {
+                Assert.True(shipped.Values(preset).SameAs(builtIn.Values(preset)), preset + " differs from the built-in values");
+                // Every key is written out, so that a patch can use @key on any of them.
+                CfgNode node = nodes[0].GetNodes("PRESET").Single(n => n.GetValue("name") == preset.ToString());
+                Assert.Equal(10, node.Values.Count);
+            }
+            Assert.Equal(3, nodes[0].GetNodes("PRESET").Count);
+            for (int level = 0; level < 4; level++)
+            {
+                Assert.Equal(builtIn.ForLevel(level), shipped.ForLevel(level));
+            }
+
+            // No preset per planet pack: the difficulty folder holds this one file.
+            string folder = Path.Combine(GameData, "Difficulty");
+            Assert.Equal(new[] { "DifficultyPresets.cfg" }, Directory.GetFiles(folder).Select(Path.GetFileName).ToArray());
+        }
     }
 }

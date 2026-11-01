@@ -71,6 +71,18 @@ namespace RtpsTool
                     }
                 {
                     ShieldSettings settings = null;
+                    int presetIndex = Array.IndexOf(args, "--preset");
+                    if (presetIndex >= 0)
+                    {
+                        DifficultyPreset preset;
+                        if (presetIndex + 1 >= args.Length || !DifficultyPresets.TryParseNamed(args[presetIndex + 1], out preset))
+                        {
+                            Console.Error.WriteLine("--preset needs one of: " + string.Join(", ", DifficultyPresets.Named.Select(p => p.ToString())));
+                            return 2;
+                        }
+                        settings = repo.Difficulty.Values(preset).Clone();
+                        Console.WriteLine("Difficulty preset " + preset + " (from the shipped RTPS_DIFFICULTY).");
+                    }
                     MissionMatrix.Print(repo, Console.Out, TiltArgument(args), settings);
                     return 0;
                 }
@@ -154,12 +166,26 @@ namespace RtpsTool
         public string Root;
         public MaterialCatalogue Catalogue;
         public List<HostDefinition> Hosts = new List<HostDefinition>();
+        public DifficultyPresets Difficulty;
         public List<ValidationIssue> Issues = new List<ValidationIssue>();
         public int ReportedIssues;
 
         public static Repository Load(string root)
         {
             var repo = new Repository { Root = root };
+
+            var difficultyNodes = new List<CfgNode>();
+            string difficultyDir = Path.Combine(root, "GameData", "RealTPS", "Difficulty");
+            foreach (string file in Directory.Exists(difficultyDir) ? Directory.GetFiles(difficultyDir, "*.cfg").OrderBy(f => f, StringComparer.Ordinal) : Enumerable.Empty<string>())
+            {
+                difficultyNodes.AddRange(CfgParser.Parse(File.ReadAllText(file)).GetNodes(DifficultyPresets.NodeName));
+            }
+            if (difficultyNodes.Count == 0)
+            {
+                repo.Issues.Add(new ValidationIssue(true, "difficulty", "no " + DifficultyPresets.NodeName + " node under GameData/RealTPS/Difficulty"));
+            }
+            repo.Difficulty = DifficultyPresets.Load(difficultyNodes);
+            repo.Issues.AddRange(repo.Difficulty.Issues);
 
             var materialNodes = new List<CfgNode>();
             string materialDir = Path.Combine(root, "GameData", "RealTPS", "Materials");

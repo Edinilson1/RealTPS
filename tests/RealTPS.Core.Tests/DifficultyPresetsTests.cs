@@ -126,5 +126,84 @@ namespace RealTPS.Core.Tests
         }
 
         // ----- the cfg -----
+
+        [Fact]
+        public void ANodeOverridesOnlyTheKeysItStates()
+        {
+            DifficultyPresets p = Parse("RTPS_DIFFICULTY { PRESET { name = Realistic\n bondDamageTime = 240 } }");
+            Assert.Empty(p.Issues);
+            ShieldSettings expected = DifficultyPresets.BuiltInValues(DifficultyPreset.Realistic);
+            expected.BondDamageTime = 240.0;
+            Assert.True(p.Values(DifficultyPreset.Realistic).SameAs(expected));
+            Assert.True(p.Values(DifficultyPreset.Strict).SameAs(DifficultyPresets.BuiltInValues(DifficultyPreset.Strict)));
+        }
+
+        [Fact]
+        public void ALaterNodeWinsKeyByKey()
+        {
+            DifficultyPresets p = Parse(
+                "RTPS_DIFFICULTY { hard = Realistic\n PRESET { name = Strict\n damageRate = 2\n breachShare = 0.9 } }",
+                "RTPS_DIFFICULTY { hard = strict\n PRESET { name = strict\n damageRate = 2.5 } }");
+            Assert.Empty(p.Issues);
+            Assert.Equal(DifficultyPreset.Strict, p.Hard);
+            Assert.Equal(2.5, p.Values(DifficultyPreset.Strict).Severity);
+            Assert.Equal(0.9, p.Values(DifficultyPreset.Strict).BreachShare);
+            Assert.Equal(DifficultyPreset.Friendly, p.ForLevel(0));
+            Assert.Equal(DifficultyPreset.Realistic, p.ForLevel(1));
+            Assert.Equal(DifficultyPreset.Realistic, p.ForLevel(2));
+            Assert.Equal(DifficultyPreset.Strict, p.ForLevel(3));
+        }
+
+        [Fact]
+        public void BadEntriesAreReportedAndNeverLoaded()
+        {
+            DifficultyPresets p = Parse(
+                "RTPS_DIFFICULTY\n{\n easy = Custom\n normal = Hardcore\n hard = StockStrict\n colour = red\n" +
+                " PRESET { name = Custom\n damageRate = 2 }\n" +
+                " PRESET { damageRate = 2 }\n" +
+                " PRESET { name = StockRealistic\n damageRate = 2 }\n" +
+                " PRESET { name = Friendly\n damageRate = 9\n bondDamageTime = 1\n breachShare = -1\n cellVariation = 0.5\n surfaceDamageTime = fast\n failure = maybe\n speed = 3 }\n" +
+                " OTHER { }\n}");
+            Assert.All(p.Issues, i => Assert.False(i.IsError));
+            Assert.Equal(15, p.Issues.Count);
+            Assert.Equal(DifficultyPreset.Friendly, p.Easy);
+            Assert.Equal(DifficultyPreset.Realistic, p.Normal);
+            Assert.Equal(DifficultyPreset.Strict, p.Hard);
+            Assert.True(p.Values(DifficultyPreset.Realistic).SameAs(DifficultyPresets.BuiltInValues(DifficultyPreset.Realistic)));
+            ShieldSettings friendly = p.Values(DifficultyPreset.Friendly);
+            Assert.Equal(DifficultyPresets.MaxDamageRate, friendly.Severity);
+            Assert.Equal(DifficultyPresets.MinBondDamageTime, friendly.BondDamageTime);
+            Assert.Equal(0.0, friendly.BreachShare);
+            Assert.Equal(DifficultyPresets.MaxCellVariation, friendly.CellVariation);
+            Assert.Equal(DifficultyPresets.BuiltInValues(DifficultyPreset.Friendly).SurfaceDamageTime, friendly.SurfaceDamageTime);
+            Assert.True(friendly.Failure);
+        }
+
+        [Fact]
+        public void ClampKeepsEveryValueInItsRange()
+        {
+            var s = new ShieldSettings
+            {
+                Severity = 99.0,
+                SurfaceDamageTime = double.NaN,
+                BondDamageTime = 0.0,
+                StructureDamageTime = 1000.0,
+                BreachShare = 2.0,
+                CellVariation = -1.0
+            };
+            DifficultyPresets.Clamp(s);
+            Assert.Equal(DifficultyPresets.MaxDamageRate, s.Severity);
+            Assert.Equal(ShieldSolver.SurfaceDamageTime, s.SurfaceDamageTime);
+            Assert.Equal(DifficultyPresets.MinBondDamageTime, s.BondDamageTime);
+            Assert.Equal(DifficultyPresets.MaxStructureDamageTime, s.StructureDamageTime);
+            Assert.Equal(1.0, s.BreachShare);
+            Assert.Equal(0.0, s.CellVariation);
+            foreach (DifficultyPreset preset in DifficultyPresets.Named)
+            {
+                ShieldSettings copy = DifficultyPresets.BuiltInValues(preset);
+                DifficultyPresets.Clamp(copy);
+                Assert.True(copy.SameAs(DifficultyPresets.BuiltInValues(preset)), preset + " is outside the ranges");
+            }
+        }
     }
 }
