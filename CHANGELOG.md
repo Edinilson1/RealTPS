@@ -3,6 +3,21 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.17.1 for KSP 1.12.x
+
+ - 2026-11-02
+
+### Changes since the previous version
+
+* Added: The preset values live in `Difficulty/DifficultyPresets.cfg` (`RTPS_DIFFICULTY`). Players and other mods
+  can retune them with ModuleManager, and a patch reaches existing saves too. Out-of-range values are clamped and
+  unknown keys are ignored, each with a warning in KSP.log: a bad patch never stops the game.
+* Added: A new game takes its preset from the stock difficulty level (Easy: Friendly; Normal and Moderate:
+  Realistic; Hard: Strict).
+* Changed: The presets come in two families: StockFriendly, StockRealistic and StockStrict for the stock system,
+  and Friendly, Realistic and Strict for real-scale systems, with damage times three times longer
+  (`Difficulty/RealSolarSystem.cfg`).
+
 ## v0.17.0 for KSP 1.12.x
 
  - 2026-10-31
