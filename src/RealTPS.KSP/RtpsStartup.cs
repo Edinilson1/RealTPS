@@ -75,6 +75,7 @@ namespace RealTPS
             {
                 problems.Add(Localizer.Format("#LOC_RTPS_startup_catalogue", errors.ToString()));
             }
+            CheckResources(catalogue, problems);
 
             if (PartLoader.LoadedPartsList == null)
             {
@@ -106,6 +107,35 @@ namespace RealTPS
                 }
             }
             RtpsLog.Info("startup check: " + hosts + " enrolled host part(s), " + problems.Count + " problem(s)");
+        }
+
+        /// <summary>
+        /// Every resource a material consumes needs a <c>RESOURCE_DEFINITION</c>: RealTPS defines its own (prefix
+        /// <c>Rtps</c>), a material from another mod must ship its own. Without one the shield cannot carry the
+        /// material, and only B9PartSwitch would say so, deep in the log.
+        /// </summary>
+        private static void CheckResources(MaterialCatalogue catalogue, List<string> problems)
+        {
+            if (PartResourceLibrary.Instance == null)
+            {
+                return;
+            }
+            for (int i = 0; i < catalogue.Materials.Count; i++)
+            {
+                MaterialDefinition m = catalogue.Materials[i];
+                string ablation = m.Ablation != null ? m.Ablation.Resource : null;
+                string erosion = m.Erosion != null ? m.Erosion.Resource : null;
+                foreach (string resource in new[] { ablation, erosion == ablation ? null : erosion })
+                {
+                    if (string.IsNullOrEmpty(resource) || PartResourceLibrary.Instance.GetDefinition(resource) != null)
+                    {
+                        continue;
+                    }
+                    string problem = Localizer.Format("#LOC_RTPS_startup_resource", m.Id, resource);
+                    problems.Add(problem);
+                    RtpsLog.Error(problem);
+                }
+            }
         }
 
         private static string CheckHost(AvailablePart available, Part prefab, ModuleRtpsShield module, MaterialCatalogue catalogue)
