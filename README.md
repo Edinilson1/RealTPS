@@ -38,6 +38,7 @@ Create an empty folder called `GameData/RealTPSNoSpeculative` and they're gone.
 | Carbon-Phenolic | A dense carbon composite for the harshest entries | Anything, if you can carry the mass |
 | SIRCA-15 | Light ceramic tiles, small shields only | Light probes coming back from orbit |
 | PICA | A light carbon ablator | Light craft on fast returns |
+| Conformal PICA (C-PICA) | A flexible PICA that fits curved pods | Light craft and the Making History pods |
 | HEEET | Woven carbon made for giant-planet entries | Heavy capsules coming back from far away |
 | Intumescent Composite *(fictional)* | A coating that swells into an insulating foam | Feather-light low-orbit protection |
 

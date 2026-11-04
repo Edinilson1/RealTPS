@@ -45,6 +45,10 @@ part while the shield has not failed. Each note names the criterion behind the n
 | `nasa_sla_pathfinder` | NASA - SLA-561V validation for Mars Pathfinder (bond temperature limit 250 C) | <https://ntrs.nasa.gov/citations/20020038840> |
 | `nasa_rtv560` | NASA CR-159000 - Shuttle tile attachment (RTV-560 maximum design temperature 533 K; aluminium structure about 450 K) | <https://ntrs.nasa.gov/api/citations/19790012947/downloads/19790012947.pdf> |
 | `nasa_hiad_structure` | NASA - HIAD inflatable structure development (first generation 250 C, second generation at least 400 C) | <https://ntrs.nasa.gov/citations/20160001263> |
+| `nasa_cpica_2022` | NASA Ames - Conformal PICA TPS: Enabling Future NASA Planetary Science Missions (conductivity up to 55% below PICA, tested 250-1850 W/cm2, single piece up to about 1.5 m) | <https://ntrs.nasa.gov/citations/20220019343> |
+| `nasa_cpica_felts` | NASA - Development of Advanced Conformal Ablative TPS Fabricated from Rayon- and PAN-Based Carbon Felts (arc-jet article densities 0.24-0.31 g/cm3) | <https://ntrs.nasa.gov/citations/20160000302> |
+| `nasa_soa_ablators` | NASA - The State of the Art: Ablative Thermal Protection Systems (C-PICA: felt substrate, recession comparable to PICA, much lower thermal penetration) | <https://ntrs.nasa.gov/citations/20220004752> |
+| `nasa_cpica_flight` | NASA - NASA Helps Emerging Space Companies Take the Heat (Ames-made C-PICA heat shield returned from space on a Varda capsule, February 2024) | <https://www.nasa.gov/general/nasa-helps-emerging-space-companies-take-the-heat/> |
 | `ksp_stock` | Kerbal Space Program 1.12.5 part configs and decompiled ModuleAblator (stock reference: 2.4 MJ/kg, 0.1*exp(-7500/T)) | The game files themselves (not redistributable) |
 | `model` | RealTPS numerical mission model (tools/RtpsTool simulate); see docs/sources/MISSION_TEST_MATRIX.md | `docs/sources/MISSION_TEST_MATRIX.md` |
 
@@ -307,6 +311,34 @@ rigid_ablative, FlightProven.
 | erosion.shearLimit | 130000 | Pa | CALIBRATION | `model` | dynamic pressure above which char or fabric is removed mechanically; ordered by reported pressure capability |
 | erosion.shearRate | 0.06 | kg/(m2 s) | CALIBRATION | `model` | areal loss rate at twice the shear limit |
 | techNode | metaMaterials | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
+
+### `c-pica`: Conformal PICA (C-PICA)
+
+rigid_ablative, FlightProven.
+
+| Property | Value | Unit | Status | Source | Note |
+|---|---|---|---|---|---|
+| density | 290 | kg/m3 | SOURCED | `nasa_cpica_felts` | 0.29 g/cm3, the most common density of the C-PICA arc-jet articles (range 0.24-0.31; PICA made in the same study 0.28-0.29). RealTPS PICA uses the lower TPSX specimen value, so the two are not from one dataset |
+| designThickness | 0.05 | m | CALIBRATION | `model` | thinner than PICA's 70 mm: the lower conductivity gives better insulation at less mass (nasa_cpica_2022: "reduced mass compared to PICA due to reduced thermal conductivity"), and the thinner layer holds less material to burn |
+| dryArealDensity | 1 | kg/m2 | ASSUMPTION | - | non-consumable bond, carrier, coating or blanket mass per area; not measured |
+| specificHeat | 1200 | J/(kg K) | ASSUMPTION | `tpsx_pica` | PICA's value: the processing is the same apart from the felt substrate (nasa_soa_ablators); no C-PICA value verified |
+| emissivity | 0.8 | - | ASSUMPTION | `tpsx_pica` | PICA's value; not verified for C-PICA |
+| charEmissivity | 0.9 | - | ASSUMPTION | - | charred surfaces are treated as darker than the virgin surface; no formulation-specific measurement verified |
+| charSurfaceFraction | 0.05 | - | CALIBRATION | `model` | share of the inventory pyrolysed before the surface counts as fully charred |
+| maxSurfaceTemp | 3300 | K | CALIBRATION | `nasa_cpica_2022` | native catastrophic fallback. Criterion: kept equal to PICA's; C-PICA was tested up to 1850 W/cm2 (1.5 atm stagnation), which does not separate it from PICA |
+| conductivity | 0.14 | W/(m K) | DERIVED | `nasa_cpica_2022` | TPSX PICA 0.305 W/(m K) reduced by the published "up to 55% less than PICA" (best variant): 0.137, rounded to 0.14. Variant curves were not found |
+| bondLimitTemp | 523 | K | ASSUMPTION | `nasa_stardust_pica` | the 523.15 K adhesive bondline class of PICA; a C-PICA-specific allowable was not verified |
+| costPerKg | 20 | funds/kg | CALIBRATION | - | gameplay cost |
+| costPerArea | 40 | funds/m2 | CALIBRATION | `nasa_cpica_2022` | below PICA's: larger tiles or a single piece mean less integration work |
+| unlockCost | 18000 | funds | CALIBRATION | - | gameplay cost |
+| ablation.onsetTemp | 750 | K | CALIBRATION | `nasa_soa_ablators` | the PICA law: recession is reported comparable to PICA |
+| ablation.activationTemp | 16000 | K | CALIBRATION | `nasa_soa_ablators` | the PICA law |
+| ablation.rateCoefficient | 260 | kg/(m2 s) | CALIBRATION | `nasa_soa_ablators` | the PICA law |
+| ablation.heatOfAblation | 20000000 | J/kg | CALIBRATION | `nasa_soa_ablators` | the PICA value |
+| erosion.shearLimit | 130000 | Pa | CALIBRATION | `nasa_cpica_2022` | kept equal to PICA's: no pressure limit that separates the two was found |
+| erosion.shearRate | 0.06 | kg/(m2 s) | CALIBRATION | `model` | areal loss rate at twice the shear limit |
+| techNode | aerospaceTech | tech node id | CALIBRATION | - | progression design: unlock node in the stock tech tree |
+| techNode@CommunityTechTree | aerospaceComposites | tech node id | CALIBRATION | - | progression design: node used when that tech tree is installed (hand-written TechTree/<needs>.cfg) |
 
 ### `heeet`: HEEET
 
