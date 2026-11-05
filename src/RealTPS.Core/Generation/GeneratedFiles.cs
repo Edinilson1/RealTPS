@@ -16,5 +16,9 @@ namespace RealTPS.Core.Generation
 
         /// <summary>Enrolment patches of the stock host parts.</summary>
         public const string StockHosts = ModFolder + "/Patches/StockHosts.cfg";
+
+        // Not generated, written by hand and checked instead:
+        // - Localization/*.cfg, by LocalizationRules;
+        // - TechTree/<needs>.cfg (the unlock nodes of another tech tree), by TechTreeOverrides.
     }
 }

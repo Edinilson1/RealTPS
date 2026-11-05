@@ -117,6 +117,9 @@ namespace RealTPS.Core.Generation
             return sb.ToString();
         }
 
+        // The unlock nodes of other tech trees are not generated: TechTree/<needs>.cfg is written by hand and
+        // checked by TechTreeOverrides.
+
         /// <summary>The enrolment patch of every host.</summary>
         public static string Hosts(MaterialCatalogue catalogue, IList<HostDefinition> hosts)
         {

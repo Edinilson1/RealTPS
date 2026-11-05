@@ -106,6 +106,34 @@ namespace RealTPS.Core.Tests
             Assert.Empty(LocalizationRules.Check(table, LoadCatalogue()).Select(i => i.ToString()));
         }
 
+        [Fact]
+        public void TheHandWrittenTechTreeFilesMoveOnlyUnlocksAndFollowTheRules()
+        {
+            MaterialCatalogue catalogue = LoadCatalogue();
+            string folder = Path.Combine(Root, TechTreeOverrides.Folder);
+            Assert.Equal(new[] { "CommunityTechTree.cfg", "MaterialUnlocks.cfg" },
+                Directory.GetFiles(folder).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToArray());
+
+            var issues = new List<ValidationIssue>();
+            var trees = Directory.GetFiles(folder, "*.cfg").Where(TechTreeOverrides.IsOverrideFile)
+                .Select(f => TechTreeOverrides.Load(Path.GetFileName(f), File.ReadAllText(f), catalogue, issues))
+                .ToList();
+            Assert.Empty(issues.Select(i => i.ToString()));
+            TechTreeOverrides ctt = Assert.Single(trees);
+            Assert.Equal("CommunityTechTree", ctt.Needs);
+
+            // Every patch of the file was accepted, and each one names a real, movable unlock.
+            Assert.Equal(CfgParser.Parse(Read(TechTreeOverrides.Folder + "/CommunityTechTree.cfg")).Nodes.Count, ctt.Nodes.Count);
+            foreach (KeyValuePair<string, string> entry in ctt.Nodes)
+            {
+                MaterialDefinition m;
+                Assert.True(catalogue.TryGet(entry.Key, out m));
+                Assert.NotEqual(string.Empty, m.UpgradeId);
+                Assert.NotEqual(m.TechNode, entry.Value);
+            }
+            Assert.Contains(ctt.Nodes, e => catalogue.Materials.Single(m => m.Id == e.Key).Speculative);
+        }
+
         private static List<ValidationIssue> TreeIssues(string fileName, string text)
         {
             var issues = new List<ValidationIssue>();
@@ -116,6 +144,56 @@ namespace RealTPS.Core.Tests
         private static string Patch(string upgrade, string needs, string body, string pass = "RealTPS")
         {
             return "@PARTUPGRADE[" + upgrade + "]:NEEDS[" + needs + "]:FOR[" + pass + "]\n{\n" + body + "\n}\n";
+        }
+
+        [Fact]
+        public void ATechTreePatchThatBreaksARuleIsRejected()
+        {
+            MaterialCatalogue catalogue = LoadCatalogue();
+            MaterialDefinition pica, intumescent;
+            Assert.True(catalogue.TryGet("pica", out pica));
+            Assert.True(catalogue.TryGet("intumescent-composite", out intumescent));
+            Assert.False(pica.Speculative);
+            Assert.True(intumescent.Speculative);
+            const string Tree = "RealTPSRuntime&B9PartSwitch&SomeTree";
+
+            // The accepted form, for reference.
+            Assert.Empty(TreeIssues("SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = landing")));
+            Assert.Empty(TreeIssues("SomeTree.cfg", Patch("RTPS_intumescent_composite", Tree + "&!RealTPSNoSpeculative", "@techRequired = landing")));
+
+            string[,] bad =
+            {
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = " + pica.TechNode), "already unlocks" },
+                { "SomeTree.cfg", Patch("RTPS_cork_phenolic", Tree, "@techRequired = landing"), "no techNode" },
+                { "SomeTree.cfg", Patch("RTPS_no_such_material", Tree, "@techRequired = landing"), "not the unlock" },
+                { "SomeTree.cfg", Patch("RTPS_pica", "RealTPSRuntime&B9PartSwitch&OtherTree", "@techRequired = landing"), "NEEDS must be" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree + "&!RealTPSNoSpeculative", "@techRequired = landing"), "NEEDS must be" },
+                { "SomeTree.cfg", Patch("RTPS_intumescent_composite", Tree, "@techRequired = landing"), "keeps !RealTPSNoSpeculative" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = landing", "OtherMod"), "FOR must be" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "techRequired = landing"), "one line" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = landing\n@entryCost = 1"), "one line" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = two nodes"), "not a tech node id" },
+                { "SomeTree.cfg", Patch("RTPS_pica", Tree, "@techRequired = landing") + Patch("RTPS_pica", Tree, "@techRequired = survivability"), "listed twice" },
+                { "SomeTree.cfg", "PARTUPGRADE\n{\nname = RTPS_pica\n}\n", "is not @PARTUPGRADE" },
+                { "SomeTree.cfg", "@techRequired = landing\n" + Patch("RTPS_pica", Tree, "@techRequired = landing"), "outside a patch" },
+                { "SomeTree.cfg", "// nothing yet\n", "lists no material" },
+                { "Some Tree.cfg", Patch("RTPS_pica", Tree, "@techRequired = landing"), "file name" }
+            };
+            for (int i = 0; i < bad.GetLength(0); i++)
+            {
+                List<ValidationIssue> issues = TreeIssues(bad[i, 0], bad[i, 1]);
+                Assert.True(issues.Any(x => x.IsError && x.ToString().Contains(bad[i, 2])),
+                    "case " + i + " (" + bad[i, 2] + "): " + string.Join(" | ", issues.Select(x => x.ToString())));
+            }
+        }
+
+        [Fact]
+        public void OnlyTheGeneratedUnlocksAreExcludedFromTheTechTreeChecks()
+        {
+            Assert.False(TechTreeOverrides.IsOverrideFile("MaterialUnlocks.cfg"));
+            Assert.True(TechTreeOverrides.IsOverrideFile("CommunityTechTree.cfg"));
+            Assert.True(TechTreeOverrides.IsOverrideFile("SomeOtherTree.cfg"));
+            Assert.False(TechTreeOverrides.IsOverrideFile("notes.txt"));
         }
 
         [Fact]

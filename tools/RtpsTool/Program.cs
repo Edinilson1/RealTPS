@@ -167,6 +167,7 @@ namespace RtpsTool
         public string Root;
         public MaterialCatalogue Catalogue;
         public List<HostDefinition> Hosts = new List<HostDefinition>();
+        public List<TechTreeOverrides> TechTrees = new List<TechTreeOverrides>();
         public DifficultyPresets Difficulty;
         public List<ValidationIssue> Issues = new List<ValidationIssue>();
         public int ReportedIssues;
@@ -208,6 +209,16 @@ namespace RtpsTool
                         Compatibility.ValidateHost(host, repo.Catalogue, repo.Issues);
                         repo.Hosts.Add(host);
                     }
+                }
+            }
+
+            // Unlock nodes of other tech trees: hand-written patches, one file per tree, checked here.
+            string treeDir = Path.Combine(root, TechTreeOverrides.Folder);
+            foreach (string file in Directory.Exists(treeDir) ? Directory.GetFiles(treeDir, "*.cfg").OrderBy(f => f, StringComparer.Ordinal) : Enumerable.Empty<string>())
+            {
+                if (TechTreeOverrides.IsOverrideFile(file))
+                {
+                    repo.TechTrees.Add(TechTreeOverrides.Load(Path.GetFileName(file), File.ReadAllText(file), repo.Catalogue, repo.Issues));
                 }
             }
             var parts = new HashSet<string>(StringComparer.Ordinal);
