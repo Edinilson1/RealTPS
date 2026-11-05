@@ -49,6 +49,49 @@ namespace RealTPS.Core.Tests
             Assert.True(DifficultyPresets.BuiltIn().Values(DifficultyPreset.Realistic).SameAs(new ShieldSettings()));
         }
 
+        [Fact]
+        public void LevelsOrderFromFriendlyToStrictWithTheSameTimeConstants()
+        {
+            DifficultyPresets p = DifficultyPresets.BuiltIn();
+            DifficultyPreset[] levels = { DifficultyPreset.Friendly, DifficultyPreset.Realistic, DifficultyPreset.Strict };
+            for (int i = 1; i < 3; i++)
+            {
+                ShieldSettings softer = p.Values(levels[i - 1]), harder = p.Values(levels[i]);
+                Assert.True(harder.Severity > softer.Severity);
+                Assert.True(harder.BreachShare > softer.BreachShare);
+                Assert.True(harder.CellVariation > softer.CellVariation);
+            }
+            foreach (DifficultyPreset level in levels)
+            {
+                ShieldSettings s = p.Values(level);
+                Assert.Equal(ShieldSolver.SurfaceDamageTime, s.SurfaceDamageTime);
+                Assert.Equal(ShieldSolver.BondDamageTime, s.BondDamageTime);
+                Assert.Equal(ShieldSolver.StructureDamageTime, s.StructureDamageTime);
+            }
+        }
+
+        [Fact]
+        public void OldSavesLoadAsTheLevelOfTheSameName()
+        {
+            // presetVersion 2 had a stock family and a real-scale family; both become the plain level.
+            Assert.Equal("Friendly", DifficultyPresets.MigrateSavedName("StockFriendly"));
+            Assert.Equal("Realistic", DifficultyPresets.MigrateSavedName("StockRealistic"));
+            Assert.Equal("Strict", DifficultyPresets.MigrateSavedName(" stockstrict "));
+            Assert.Equal("Friendly", DifficultyPresets.MigrateSavedName("Friendly"));
+            Assert.Equal("Realistic", DifficultyPresets.MigrateSavedName("Realistic"));
+            Assert.Equal("Strict", DifficultyPresets.MigrateSavedName("Strict"));
+            Assert.Equal("Custom", DifficultyPresets.MigrateSavedName("Custom"));
+            // Anything else is left alone, for the caller to reject.
+            Assert.Equal("StockCustom", DifficultyPresets.MigrateSavedName("StockCustom"));
+            Assert.Equal("Stock", DifficultyPresets.MigrateSavedName("Stock"));
+            Assert.Equal("Hardcore", DifficultyPresets.MigrateSavedName("Hardcore"));
+            Assert.Null(DifficultyPresets.MigrateSavedName(null));
+            foreach (DifficultyPreset preset in Enum.GetValues(typeof(DifficultyPreset)))
+            {
+                Assert.Equal(preset.ToString(), DifficultyPresets.MigrateSavedName(preset.ToString()));
+            }
+        }
+
         /// <summary>The same over-temperature, held for the same time, under each preset.</summary>
         private static double IntegrityLost(DifficultyPreset preset, double skin, double seconds)
         {

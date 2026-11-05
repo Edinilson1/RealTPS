@@ -8,6 +8,8 @@ namespace RealTPS.Core.Shield
 {
     /// <summary>
     /// The difficulty presets a save can choose: three levels and Custom, which keeps whatever the player set.
+    /// There is no preset per planet pack. RealTPS reads the heating the game computes at every step, so a larger
+    /// system shows up as longer, hotter entries on its own; the damage time constants stay the same.
     /// </summary>
     public enum DifficultyPreset
     {
@@ -89,6 +91,31 @@ namespace RealTPS.Core.Shield
         public static bool IsNamed(DifficultyPreset preset)
         {
             return preset >= DifficultyPreset.Friendly && preset <= DifficultyPreset.Strict;
+        }
+
+        /// <summary>
+        /// The preset name a save written by an older build should load as. Builds with presetVersion 2 had two
+        /// families, StockFriendly / StockRealistic / StockStrict and real-scale Friendly / Realistic / Strict; both
+        /// now map to the level of the same name. Saves without presetVersion already use today's names. Any other
+        /// text is returned unchanged.
+        /// </summary>
+        public static string MigrateSavedName(string saved)
+        {
+            if (saved == null)
+            {
+                return null;
+            }
+            string trimmed = saved.Trim();
+            const string legacyPrefix = "Stock";
+            if (trimmed.Length > legacyPrefix.Length && trimmed.StartsWith(legacyPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                DifficultyPreset level;
+                if (TryParseNamed(trimmed.Substring(legacyPrefix.Length), out level))
+                {
+                    return level.ToString();
+                }
+            }
+            return trimmed;
         }
 
         /// <summary>The presets with nothing but the built-in values.</summary>
