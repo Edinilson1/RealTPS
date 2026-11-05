@@ -41,6 +41,7 @@ namespace RtpsTool
             repo.ReportedIssues = repo.Issues.Count;
             if (command == "validate")
             {
+                LocalizationCheck.Run(repo);
                 Provenance.Check(repo);
                 foreach (ValidationIssue issue in repo.Issues.Skip(repo.ReportedIssues))
                 {
@@ -218,6 +219,94 @@ namespace RtpsTool
                 }
             }
             return repo;
+        }
+    }
+
+    /// <summary>
+    /// Every localization tag referenced by shipped configs or by the plugin source must exist in every
+    /// shipped language, the languages must match en-us (<see cref="LocalizationRules"/>), and no shipped config
+    /// may be saved with a byte-order mark.
+    /// </summary>
+    internal static class LocalizationCheck
+    {
+        private static readonly System.Text.RegularExpressions.Regex Tag = new System.Text.RegularExpressions.Regex("#LOC_RTPS_[A-Za-z0-9_]+");
+
+        public static void Run(Repository repo)
+        {
+            string gameData = Path.Combine(repo.Root, "GameData", "RealTPS");
+            string locDir = Path.Combine(gameData, "Localization");
+            var used = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            foreach (string file in Directory.GetFiles(gameData, "*.cfg", SearchOption.AllDirectories))
+            {
+                byte[] head = File.ReadAllBytes(file).Take(3).ToArray();
+                if (head.Length == 3 && head[0] == 0xEF && head[1] == 0xBB && head[2] == 0xBF)
+                {
+                    repo.Issues.Add(new ValidationIssue(true, Rel(repo, file), "starts with a byte-order mark; save as UTF-8 without BOM"));
+                }
+                if (file.StartsWith(locDir, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                Collect(used, File.ReadAllText(file), Rel(repo, file));
+            }
+            string source = Path.Combine(repo.Root, "src", "RealTPS.KSP");
+            if (Directory.Exists(source))
+            {
+                foreach (string file in Directory.GetFiles(source, "*.cs", SearchOption.AllDirectories))
+                {
+                    if (file.Contains(Path.DirectorySeparatorChar + "obj" + Path.DirectorySeparatorChar) || file.Contains(Path.DirectorySeparatorChar + "bin" + Path.DirectorySeparatorChar))
+                    {
+                        continue;
+                    }
+                    Collect(used, File.ReadAllText(file), Rel(repo, file));
+                }
+            }
+
+            // Every language found in the files counts; none is named here, so a new language needs no code.
+            var files = new List<KeyValuePair<string, string>>();
+            foreach (string file in Directory.Exists(locDir) ? Directory.GetFiles(locDir, "*.cfg", SearchOption.AllDirectories).OrderBy(f => f, StringComparer.Ordinal).ToArray() : new string[0])
+            {
+                files.Add(new KeyValuePair<string, string>(Rel(repo, file), File.ReadAllText(file)));
+            }
+            LocalizationRules.Table table = LocalizationRules.Load(files);
+            repo.Issues.AddRange(table.Issues);
+            repo.Issues.AddRange(LocalizationRules.Check(table, repo.Catalogue));
+
+            foreach (KeyValuePair<string, Dictionary<string, string>> language in table.Languages)
+            {
+                foreach (KeyValuePair<string, string> tag in used)
+                {
+                    if (!language.Value.ContainsKey(tag.Key))
+                    {
+                        repo.Issues.Add(new ValidationIssue(true, "localization " + language.Key, "tag " + tag.Key + " (used in " + tag.Value + ") is not defined"));
+                    }
+                }
+                foreach (string tag in language.Value.Keys)
+                {
+                    // Material tags stay available to third-party hosts even when no shipped host lists the material.
+                    if (!used.ContainsKey(tag) && !tag.StartsWith("#LOC_RTPS_mat_", StringComparison.Ordinal))
+                    {
+                        repo.Issues.Add(new ValidationIssue(false, "localization " + language.Key, "tag " + tag + " is defined but never used"));
+                    }
+                }
+            }
+        }
+
+        private static void Collect(Dictionary<string, string> used, string text, string where)
+        {
+            foreach (System.Text.RegularExpressions.Match match in Tag.Matches(text))
+            {
+                if (!used.ContainsKey(match.Value))
+                {
+                    used.Add(match.Value, where);
+                }
+            }
+        }
+
+        private static string Rel(Repository repo, string file)
+        {
+            return file.Substring(repo.Root.Length).TrimStart(Path.DirectorySeparatorChar).Replace(Path.DirectorySeparatorChar, '/');
         }
     }
 

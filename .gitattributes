@@ -1,4 +1,5 @@
 # Text is stored and checked out with LF, as .editorconfig asks, whatever core.autocrlf says.
+# Configs must also stay UTF-8 without a byte-order mark: git does not enforce that, `RtpsTool validate` does.
 * text=auto eol=lf
 
 # Binaries: never converted or diffed as text.

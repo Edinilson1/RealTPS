@@ -92,6 +92,20 @@ namespace RealTPS.Core.Tests
             Assert.Equal(PatchGenerator.Hosts(catalogue, hosts), Read(GeneratedFiles.StockHosts));
         }
 
+        [Fact]
+        public void TheHandWrittenLocalizationIsCompleteAndItsNumbersAreCurrent()
+        {
+            var files = Directory.GetFiles(Path.Combine(GameData, "Localization"), "*.cfg", SearchOption.AllDirectories)
+                .OrderBy(f => f, StringComparer.Ordinal)
+                .Select(f => new KeyValuePair<string, string>(Path.GetFileName(f), File.ReadAllText(f)))
+                .ToList();
+            LocalizationRules.Table table = LocalizationRules.Load(files);
+            Assert.Empty(table.Issues.Select(i => i.ToString()));
+            Assert.Contains(LocalizationRules.ReferenceLanguage, table.Languages.Keys);
+            Assert.True(table.Languages.Count >= 2, "en-us and pt-br ship");
+            Assert.Empty(LocalizationRules.Check(table, LoadCatalogue()).Select(i => i.ToString()));
+        }
+
         private static List<ValidationIssue> TreeIssues(string fileName, string text)
         {
             var issues = new List<ValidationIssue>();
