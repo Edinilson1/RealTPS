@@ -3,6 +3,32 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.18.0 for KSP 1.12.x
+
+ - 2026-11-05
+
+### Changes since the previous version
+
+* Added: C-PICA (Conformal PICA), a flight-proven felt-based ablator: lighter and a better insulator than PICA, but
+  with less material to burn. On the stock rigid shields and the KV pods, at `aerospaceTech` (`aerospaceComposites`
+  with Community Tech Tree).
+* Added: Startup check for resources: a material whose resource has no `RESOURCE_DEFINITION` (say, a material from
+  another mod that forgot to define it) is named at the main menu, since no shield can carry it.
+* Changed: Difficulty is back to Friendly, Realistic, Strict and Custom, with the calibrated damage times (8 s
+  surface, 60 s bond, 10 s structure) at every level. The levels differ in damage rate (0.5×, 1×, 1.5×), breach
+  heat share (a quarter, half, three quarters) and variation between cells (none, 2 %, 5 %).
+* Removed: The real-scale presets and `Difficulty/RealSolarSystem.cfg`. RealTPS reads the heating the game works
+  out, so a bigger system's longer, hotter entries reach the shield on their own. Saves made with the old presets
+  open on the level of the same name (StockRealistic and Realistic both become Realistic, and so on).
+* Changed: The Brazilian Portuguese detail lines use a decimal comma.
+
+### For Modders
+
+* Localization is written by hand and no language is named in the code: a new language is a new
+  `Localization/<language>.cfg`. Every number in a material's detail line must be one of that material's values.
+* The Community Tech Tree unlocks are written by hand in `TechTree/CommunityTechTree.cfg`, one patch per material
+  that moves. Another tech tree is just another `TechTree/<needs>.cfg`.
+
 ## v0.17.1 for KSP 1.12.x
 
  - 2026-11-02
