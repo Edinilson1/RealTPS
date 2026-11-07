@@ -139,6 +139,19 @@ namespace RealTPS.Core.Shield
         }
     }
 
+    /// <summary>Where the jet of one engine nozzle meets the shield, seen on the protected face.</summary>
+    public struct PlumeHit
+    {
+        /// <summary>Face coordinates of the hit point, in face radii (x along sector zero, y a quarter turn on).</summary>
+        public double X, Y;
+
+        /// <summary>Relative strength of the jet (thrust share over distance squared). Only ratios between hits matter.</summary>
+        public double Strength;
+
+        /// <summary>Standard deviation of the footprint on the face, face radii.</summary>
+        public double Spread;
+    }
+
     /// <summary>
     /// Spatial weights of the cells of a face. They only distribute what the engine computes for the whole
     /// part: every array has an area-weighted mean of exactly 1. The profile is a gameplay calibration of a
@@ -146,6 +159,89 @@ namespace RealTPS.Core.Shield
     /// </summary>
     public static class ShieldWeights
     {
+        /// <summary>Radius of a jet footprint at the nozzle, m. Calibration.</summary>
+        public const double PlumeSpreadBase = 0.15;
+
+        /// <summary>Growth of the footprint radius per metre from the nozzle, m/m (about 6 degrees). Calibration.</summary>
+        public const double PlumeSpreadPerMetre = 0.10;
+
+        /// <summary>Narrowest footprint, face radii: keeps one hit from landing on a single sample point only.</summary>
+        public const double MinPlumeSpread = 0.08;
+
+        /// <summary>Footprint spread on a face of the given radius for a jet that travelled <paramref name="distance"/> m.</summary>
+        public static double PlumeSpread(double distance, double faceRadius)
+        {
+            if (!(faceRadius > 0.0) || double.IsInfinity(faceRadius))
+            {
+                return 1.0;
+            }
+            double metres = PlumeSpreadBase + PlumeSpreadPerMetre * (distance > 0.0 && !double.IsInfinity(distance) ? distance : 0.0);
+            return Math.Max(MinPlumeSpread, Math.Min(4.0, metres / faceRadius));
+        }
+
+        /// <summary>
+        /// Weights of the heat that engine jets put on the face: a Gaussian footprint around each hit, summed by
+        /// strength and normalised to an area-weighted mean of 1. A hit off the face still weights the cells
+        /// nearest to it. Fills 1 everywhere and returns false when no hit is usable.
+        /// </summary>
+        public static bool Plume(ShieldLayout layout, IList<PlumeHit> hits, double[] weights)
+        {
+            if (layout == null)
+            {
+                throw new ArgumentNullException(nameof(layout));
+            }
+            if (weights == null || weights.Length < layout.Count)
+            {
+                throw new ArgumentException("weight array must hold one value per cell");
+            }
+            int n = layout.Count;
+            for (int i = 0; i < n; i++)
+            {
+                weights[i] = 0.0;
+            }
+            int count = hits != null ? hits.Count : 0;
+            for (int h = 0; h < count; h++)
+            {
+                PlumeHit hit = hits[h];
+                if (!(hit.Strength > 0.0) || double.IsInfinity(hit.Strength) || !Finite(hit.X) || !Finite(hit.Y))
+                {
+                    continue;
+                }
+                double spread = hit.Spread > MinPlumeSpread && !double.IsInfinity(hit.Spread) ? hit.Spread : MinPlumeSpread;
+                double twoSigma2 = 2.0 * spread * spread;
+                for (int i = 0; i < n; i++)
+                {
+                    double r = layout.SampleRadius(i);
+                    double a = layout.Angle(i);
+                    double dx = r * Math.Cos(a) - hit.X;
+                    double dy = r * Math.Sin(a) - hit.Y;
+                    weights[i] += hit.Strength * Math.Exp(-(dx * dx + dy * dy) / twoSigma2);
+                }
+            }
+            double mean = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                mean += weights[i] * layout.AreaFraction(i);
+            }
+            if (!(mean > 1.0e-300) || double.IsInfinity(mean))
+            {
+                for (int i = 0; i < n; i++)
+                {
+                    weights[i] = 1.0;
+                }
+                return false;
+            }
+            for (int i = 0; i < n; i++)
+            {
+                weights[i] /= mean;
+            }
+            return true;
+        }
+
+        private static bool Finite(double value)
+        {
+            return !double.IsNaN(value) && !double.IsInfinity(value);
+        }
         /// <summary>Relative drop of heating from the centre to the rim at zero incidence.</summary>
         public const double RadialFalloff = 0.10;
 

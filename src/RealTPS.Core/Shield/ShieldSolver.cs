@@ -100,6 +100,18 @@ namespace RealTPS.Core.Shield
         /// <summary>How the flow meets the protected face.</summary>
         public Incidence Flow;
 
+        /// <summary>
+        /// Heat the game added to the part's skin from outside the airflow (engine jets), W: the net of the
+        /// game's added-skin channels, without what RealTPS itself submitted. Zero when none.
+        /// </summary>
+        public double PlumePower;
+
+        /// <summary>
+        /// Where that heat lands, per cell, area-weighted mean 1 (<see cref="ShieldWeights.Plume"/>); null = spread
+        /// evenly, when no jet could be traced to the part.
+        /// </summary>
+        public double[] PlumeWeights;
+
         public ShieldSettings Settings;
     }
 
@@ -124,11 +136,20 @@ namespace RealTPS.Core.Shield
         /// <summary>The weight modulation of the airflow in use, 0..1.</summary>
         public double Gate;
 
+        /// <summary>The weight modulation of engine jets in use, 0..1.</summary>
+        public double PlumeGate;
+
         /// <summary>
         /// Heat weight per cell, area-weighted mean 1: the gated airflow weights and the gated jet weights,
         /// blended in proportion to the convective and the jet power.
         /// </summary>
         public readonly double[] Weights;
+
+        /// <summary>Gated airflow weight per cell alone, area-weighted mean 1.</summary>
+        public readonly double[] FlowWeights;
+
+        /// <summary>Gated jet weight per cell alone, area-weighted mean 1.</summary>
+        public readonly double[] PlumeWeights;
 
         /// <summary>Gated windward factor per cell, area-weighted mean 1.</summary>
         public readonly double[] Windward;
@@ -169,6 +190,8 @@ namespace RealTPS.Core.Shield
         public ShieldStepResult(int cells)
         {
             Weights = new double[cells];
+            FlowWeights = new double[cells];
+            PlumeWeights = new double[cells];
             Windward = new double[cells];
             ExposedTime = new double[cells];
             BreachEnergy = new double[cells];
@@ -188,12 +211,14 @@ namespace RealTPS.Core.Shield
 
         internal void Reset(int cells)
         {
-            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = Gate = 0.0;
+            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = Gate = PlumeGate = 0.0;
             ShearOverload = FailureDue = false;
             NewlyExposed = 0;
             for (int i = 0; i < cells; i++)
             {
                 Weights[i] = 1.0;
+                FlowWeights[i] = 1.0;
+                PlumeWeights[i] = 1.0;
                 Windward[i] = 1.0;
                 ExposedTime[i] = 0.0;
                 BreachEnergy[i] = 0.0;
@@ -293,17 +318,39 @@ namespace RealTPS.Core.Shield
             double skin = input.SkinTemp;
             double interior = Usable(input.InternalTemp) ? input.InternalTemp : skin;
             double power = Usable(input.ConvectivePower) ? input.ConvectivePower : 0.0;
+            double plume = Usable(input.PlumePower) ? input.PlumePower : 0.0;
             bool consumable = material.HasConsumable;
             bool layered = material.HasLayerModel;
 
             // ----- weights -----
             double[] w = result.Weights;
             double[] wind = result.Windward;
+            double[] flow = result.FlowWeights;
             double emissivity = Emissivity(material, state);
             ShieldWeights.Compute(layout, input.Flow.Defined ? input.Flow.Tilt : 0.0, input.Flow.Azimuth, w, wind);
             result.Gate = ShieldWeights.Gate(power, emissivity, skin, area, input.Flow.Defined ? input.Flow.Facing : 0.0);
             ShieldWeights.ApplyGate(w, n, result.Gate);
             ShieldWeights.ApplyGate(wind, n, result.Gate);
+            Array.Copy(w, flow, n);
+
+            // Engine jets: their own footprint, gated by how much they matter against what the face radiates,
+            // then blended with the airflow weights in proportion to each source's power. The mean stays 1.
+            if (plume > 0.0)
+            {
+                double[] jet = result.PlumeWeights;
+                double[] given = input.PlumeWeights;
+                for (int i = 0; i < n; i++)
+                {
+                    jet[i] = given != null && given.Length >= n && given[i] >= 0.0 && Usable(given[i] + 1.0) ? given[i] : 1.0;
+                }
+                result.PlumeGate = ShieldWeights.Gate(plume, emissivity, skin, area, 1.0);
+                ShieldWeights.ApplyGate(jet, n, result.PlumeGate);
+                double total = power + plume;
+                for (int i = 0; i < n; i++)
+                {
+                    w[i] = (power * flow[i] + plume * jet[i]) / total;
+                }
+            }
 
             if (layered && !state.ThermalInitialised)
             {
@@ -342,12 +389,12 @@ namespace RealTPS.Core.Shield
                 Consume(material, state, input, result, dt, area, capacity, skin);
             }
 
-            // ----- received heat (diagnostic) -----
-            if (power > 0.0)
+            // ----- received heat (diagnostic): airflow and jets, where each lands -----
+            if (power + plume > 0.0)
             {
                 for (int i = 0; i < n; i++)
                 {
-                    state.Received[i] += power * layout.AreaFraction(i) * w[i] * dt;
+                    state.Received[i] += (power + plume) * layout.AreaFraction(i) * w[i] * dt;
                 }
             }
 
@@ -428,7 +475,7 @@ namespace RealTPS.Core.Shield
                         if (result.ExposedTime[i] > 0.0)
                         {
                             double share = breachShare * layout.AreaFraction(i) * result.ExposedTime[i];
-                            result.BreachEnergy[i] = share * airPower * w[i];
+                            result.BreachEnergy[i] = share * airPower * flow[i];
                             total += result.BreachEnergy[i];
                         }
                     }
