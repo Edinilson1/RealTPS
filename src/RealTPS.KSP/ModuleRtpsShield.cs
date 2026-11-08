@@ -208,6 +208,11 @@ namespace RealTPS
         [NonSerialized] private PartResource mirror;
         [NonSerialized] private IScalarModule charModule;
         [NonSerialized] private ModuleAnimateGeneric deployModule;
+        [NonSerialized] private ShieldPlumes plumes;
+        [NonSerialized] private double plumePowerKw;
+
+        /// <summary>What the coordinator submitted to this part's exposed skin in the last tick, kW (negative for a sink).</summary>
+        [NonSerialized] internal double CommittedExposedKw;
         [NonSerialized] private float lastCharScalar = -1f;
         [NonSerialized] private bool baseCaptured;
         [NonSerialized] private double baseEmissive;
@@ -1031,6 +1036,12 @@ namespace RealTPS
             stepping = false;
             sinkPowerKw = 0.0;
             breachPowerKw = 0.0;
+            plumePowerKw = 0.0;
+            CommittedExposedKw = 0.0;
+            if (plumes != null)
+            {
+                plumes.Reset();
+            }
             tpsShearOverload = false;
             oxidising = false;
         }
@@ -1052,6 +1063,26 @@ namespace RealTPS
             Vector3 local = part.transform.InverseTransformDirection(velocity);
             flow = vessel.srfSpeed > 1.0 ? ShieldGeometry.Incidence(frame, local.x, local.y, local.z) : new Incidence();
 
+            // Heat the game added to the skin from outside the airflow (engine jets): its added-skin channels
+            // of the last integration, without what RealTPS itself submitted there. It only counts where a jet can
+            // be traced to this part; then it shapes where consumption and surface damage land.
+            double plumePower = 0.0;
+            double[] plumeWeights = null;
+            double addedKw = part.thermalSkinFluxPrevious + part.thermalExposedFluxPrevious - CommittedExposedKw;
+            if (addedKw > 0.0 && !double.IsInfinity(addedKw) && state.Count > 1)
+            {
+                if (plumes == null)
+                {
+                    plumes = new ShieldPlumes();
+                }
+                plumeWeights = plumes.Weights(part, frame, FaceRadius(), state.Layout);
+                if (plumeWeights != null)
+                {
+                    plumePower = addedKw * 1000.0;
+                }
+            }
+            plumePowerKw = plumePower * 0.001;
+
             var input = new ShieldStepInput
             {
                 Dt = dt,
@@ -1062,6 +1093,8 @@ namespace RealTPS
                 OxygenAtmosphere = InOxygenAtmosphere(),
                 ConvectivePower = part.thermalConvectionFlux * 1000.0,
                 Flow = flow,
+                PlumePower = plumePower,
+                PlumeWeights = plumeWeights,
                 Settings = RtpsDifficulty.CurrentSettings
             };
             ShieldSolver.Step(material, state, input, result);
