@@ -3,6 +3,20 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.19.0 for KSP 1.12.x
+
+ - 2026-11-10
+
+### Changes since the previous version
+
+* Added: Engine jets. RealTPS traces each firing nozzle nearby to the spot it hits on a shield, so a jet on one side
+  wears that side first: a stage firing at the shield, a lander's engine, a test stand. It adds no heat: the heat is
+  the game's own exhaust heating, and RealTPS only works out where it lands. Each hit leaves a footprint weighted by
+  thrust and distance, and the air and the jets share the wear by their power.
+* Added: The heat received by each cell counts the engine jets too.
+* Added: Telemetry fields `plumeKw`, `plumeHits` and `plumeGate`.
+* Optimized: Jets are traced at most four times a second, up to 256 nozzles within a kilometre.
+
 ## v0.18.0 for KSP 1.12.x
 
  - 2026-11-05
