@@ -165,6 +165,12 @@ namespace RealTPS
         [KSPField(guiName = "#LOC_RTPS_ui_breach", guiFormat = "F1", guiUnits = " kW")]
         public double breachPowerKw;
 
+        /// <summary>
+        /// What exposed cells asked to pass on in the last step, kW, before the rays looked for a part behind
+        /// them. Telemetry only: <see cref="breachPowerKw"/> is what was actually moved.
+        /// </summary>
+        [NonSerialized] private double breachRequestKw;
+
         [KSPField(guiActive = true, guiActiveEditor = false, guiName = "#LOC_RTPS_ui_material")]
         public string uiMaterial = string.Empty;
 
@@ -1036,6 +1042,7 @@ namespace RealTPS
             stepping = false;
             sinkPowerKw = 0.0;
             breachPowerKw = 0.0;
+            breachRequestKw = 0.0;
             plumePowerKw = 0.0;
             CommittedExposedKw = 0.0;
             if (plumes != null)
@@ -1203,6 +1210,7 @@ namespace RealTPS
         internal void Finish(double dt)
         {
             breachPowerKw = dt > 0.0 ? grantedBreach * 0.001 / dt : 0.0;
+            breachRequestKw = dt > 0.0 && result != null ? result.BreachTotal * 0.001 / dt : 0.0;
             part.emissiveConstant = result.Emissivity;
             part.skinMaxTemp = result.NativeLimit;
             ApplyConduction(result.Conductance);
@@ -1336,6 +1344,7 @@ namespace RealTPS
             inertReason = "internal error: " + e.Message;
             sinkPowerKw = 0.0;
             breachPowerKw = 0.0;
+            breachRequestKw = 0.0;
             stepping = false;
         }
 
@@ -1565,6 +1574,7 @@ namespace RealTPS
             inertReason = reason ?? string.Empty;
             sinkPowerKw = 0.0;
             breachPowerKw = 0.0;
+            breachRequestKw = 0.0;
         }
 
         private void SetUntreated()
@@ -1574,6 +1584,7 @@ namespace RealTPS
             inertReason = string.Empty;
             sinkPowerKw = 0.0;
             breachPowerKw = 0.0;
+            breachRequestKw = 0.0;
         }
 
         private void WarnOnScreen()
@@ -1656,6 +1667,7 @@ namespace RealTPS
                 + " pyro=" + F(tpsPyrolysed)
                 + " sinkKw=" + F(sinkPowerKw)
                 + " breachKw=" + F(breachPowerKw)
+                + " breachReqKw=" + F(breachRequestKw)
                 + " convKw=" + F(part.thermalConvectionFlux)
                 + " radKw=" + F(part.thermalRadiationFlux)
                 + " qPa=" + F(part.dynamicPressurekPa * 1000.0)
