@@ -1136,7 +1136,13 @@ namespace RealTPS
                 return;
             }
 
-            Vector3 direction = vessel.srfSpeed > 1.0 ? -((Vector3)vessel.srf_velocity).normalized : Vector3.zero;
+            // Rays leave each exposed cell the way the heat travels: with the air relative to the craft for the
+            // airflow's share, along the exhaust for the jets' share, weighted by what each passes on. With neither
+            // (still air, no traced jet) they go straight through the face.
+            double jetShare = Math.Max(0.0, Math.Min(1.0, result.BreachFromJets / result.BreachTotal));
+            Vector3 airMotion = vessel.srfSpeed > 1.0 ? -((Vector3)vessel.srf_velocity).normalized : Vector3.zero;
+            Vector3 jetMotion = plumes != null ? plumes.Direction : Vector3.zero;
+            Vector3 direction = airMotion * (float)(1.0 - jetShare) + jetMotion * (float)jetShare;
             if (direction.sqrMagnitude < 1.0e-6f)
             {
                 direction = -part.transform.TransformDirection(new Vector3((float)frame.Nx, (float)frame.Ny, (float)frame.Nz));

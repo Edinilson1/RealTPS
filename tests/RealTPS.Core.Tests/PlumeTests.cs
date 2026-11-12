@@ -156,6 +156,64 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void AJetPassesHeatThroughTheHoleItBurnt()
+        {
+            // On the pad: no airflow, a jet aimed at one cell that has burnt through, another hole far from it.
+            int target = 2 * Layout.Sectors + 1;
+            int opposite = 2 * Layout.Sectors + (1 + Layout.Sectors / 2) % Layout.Sectors;
+            var jet = new double[Layout.Count];
+            ShieldWeights.Plume(Layout, new[] { At(target) }, jet);
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m, Layout);
+            state.Inventory[target] = 0.0;
+            state.Inventory[opposite] = 0.0;
+            ShieldStepInput input = ShieldSolverTests.Input(1400.0);
+            input.Flow = new Incidence();
+            input.PlumePower = 5.0e6;
+            input.PlumeWeights = jet;
+            var result = new ShieldStepResult(Layout.Count);
+            ShieldSolver.Step(m, state, input, result);
+
+            double expected = ShieldSolver.BreachShare * 5.0e6 * Layout.AreaFraction(target) * result.PlumeWeights[target] * input.Dt;
+            Assert.True(expected > 0.0);
+            Assert.Equal(expected, result.BreachEnergy[target], 6);
+            Assert.True(result.BreachEnergy[opposite] < 0.01 * result.BreachEnergy[target]);
+            Assert.Equal(result.BreachTotal, result.BreachFromJets, 9);
+        }
+
+        [Fact]
+        public void AirAndJetsEachPassOnTheirOwnShare()
+        {
+            int target = 3;
+            var jet = new double[Layout.Count];
+            ShieldWeights.Plume(Layout, new[] { At(target) }, jet);
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m, Layout);
+            state.Inventory[target] = 0.0;
+            ShieldStepInput input = ShieldSolverTests.Input(1400.0, power: 3.0e5, tilt: 0.5);
+            input.PlumePower = 2.0e5;
+            input.PlumeWeights = jet;
+            var result = new ShieldStepResult(Layout.Count);
+            ShieldSolver.Step(m, state, input, result);
+
+            double share = ShieldSolver.BreachShare * Layout.AreaFraction(target) * input.Dt;
+            double air = share * 3.0e5 * result.FlowWeights[target];
+            double jets = share * 2.0e5 * result.PlumeWeights[target];
+            Assert.Equal(air + jets, result.BreachTotal, 6);
+            Assert.Equal(jets, result.BreachFromJets, 6);
+
+            // A face in the lee gets nothing from the air, but a jet that reaches it still passes heat through.
+            input.Flow = new Incidence { Defined = true, Facing = -0.5, Tilt = 2.0, Azimuth = 0.0 };
+            ShieldSolver.Step(m, ShieldSolverTests.Stocked(m, Layout, 1.0), input, result);
+            Assert.Equal(0.0, result.BreachTotal);                  // nothing exposed in a fresh shield
+            ShieldState holed = ShieldSolverTests.Stocked(m, Layout);
+            holed.Inventory[target] = 0.0;
+            ShieldSolver.Step(m, holed, input, result);
+            Assert.True(result.BreachTotal > 0.0);
+            Assert.Equal(result.BreachTotal, result.BreachFromJets, 9);
+        }
+
+        [Fact]
         public void BlendedWeightsKeepTheMean()
         {
             int target = 3;

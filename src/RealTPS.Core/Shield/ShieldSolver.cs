@@ -162,6 +162,12 @@ namespace RealTPS.Core.Shield
 
         public double BreachTotal;
 
+        /// <summary>
+        /// The part of <see cref="BreachTotal"/> that the jets put on exposed cells, J; the rest came from the
+        /// airflow. The caller uses it to aim the rays that look for the part behind.
+        /// </summary>
+        public double BreachFromJets;
+
         /// <summary>True when the structure has given way and no failure has been recorded yet.</summary>
         public bool FailureDue;
 
@@ -211,7 +217,7 @@ namespace RealTPS.Core.Shield
 
         internal void Reset(int cells)
         {
-            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = Gate = PlumeGate = 0.0;
+            PyrolysedMass = ShearErodedMass = OxidisedMass = ShedMass = HeatAbsorbed = BreachTotal = BreachFromJets = Gate = PlumeGate = 0.0;
             ShearOverload = FailureDue = false;
             NewlyExposed = 0;
             for (int i = 0; i < cells; i++)
@@ -467,16 +473,20 @@ namespace RealTPS.Core.Shield
                 // The airflow counts only when it meets the protected face; a jet counts wherever it lands (its
                 // power is only non-zero when it was traced to this face).
                 double airPower = power > 0.0 && input.Flow.Defined && input.Flow.Facing > 0.0 ? power : 0.0;
-                if (settings.Transfer && breachShare > 0.0 && airPower > 0.0 && capacity > 0.0)
+                if (settings.Transfer && breachShare > 0.0 && airPower + plume > 0.0 && capacity > 0.0)
                 {
+                    double[] jet = result.PlumeWeights;
                     double total = 0.0;
+                    double fromJets = 0.0;
                     for (int i = 0; i < n; i++)
                     {
                         if (result.ExposedTime[i] > 0.0)
                         {
                             double share = breachShare * layout.AreaFraction(i) * result.ExposedTime[i];
-                            result.BreachEnergy[i] = share * airPower * flow[i];
+                            double jets = share * plume * jet[i];
+                            result.BreachEnergy[i] = share * airPower * flow[i] + jets;
                             total += result.BreachEnergy[i];
+                            fromJets += jets;
                         }
                     }
                     double floor = material.Ablation != null ? material.Ablation.OnsetTemp : interior;
@@ -495,8 +505,10 @@ namespace RealTPS.Core.Shield
                             result.BreachEnergy[i] *= scale;
                         }
                         total = budget;
+                        fromJets *= scale;
                     }
                     result.BreachTotal = total;
+                    result.BreachFromJets = Math.Min(fromJets, total);
                 }
             }
 
