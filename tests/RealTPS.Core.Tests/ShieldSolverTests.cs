@@ -988,6 +988,13 @@ namespace RealTPS.Core.Tests
 
     public class ShieldFailurePolicyTests
     {
+        [Fact]
+        public void AFailedShieldOnlyLosesItsProtection()
+        {
+            // A failed shield never separates, so there is one failure mode.
+            Assert.Equal(new[] { ShieldFailure.None, ShieldFailure.ProtectionLost },
+                (ShieldFailure[])System.Enum.GetValues(typeof(ShieldFailure)));
+        }
 
         [Fact]
         public void IntegratedHostsHeatTheirOwnInterior()

@@ -1272,7 +1272,7 @@ namespace RealTPS
         /// <summary>
         /// Phase 6, after every thermal transaction of the step: the shield fails, once. It stays on the vessel
         /// and loses its protection: its surface limit drops to the bare carrier's (<c>substrateMaxTemp</c>).
-        /// If the bare part overheats, the game's thermal engine destroys it. RealTPS never calls
+        /// It never separates (real shields do not come off whole when they fail); if the bare part overheats, the game's thermal engine destroys it. RealTPS never calls
         /// <c>explode()</c>, <c>Die()</c> or <c>decouple()</c>.
         /// </summary>
         internal void EnactFailure()
