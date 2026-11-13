@@ -46,8 +46,10 @@ Create an empty folder called `GameData/RealTPSNoSpeculative` and they're gone.
 
 | Material | What it is | Best for |
 |---|---|---|
-| LI-900 Silica Tile | The Space Shuttle's tiles | Very gentle entries of very light craft |
-| TUFROC | A toughened carbon cap over insulation | Reusable low-orbit returns of light craft on large shields |
+| LI-900 Silica Tile * | The Space Shuttle's tiles | Very gentle entries of very light craft |
+| TUFROC * | A toughened carbon cap over insulation | Reusable low-orbit returns of light craft on large shields |
+| Reinforced Carbon-Carbon * | The Space Shuttle's nose cap and leading edges | Like TUFROC, with a little more heat |
+| UHTC (ZrB2-SiC) * | An ultra-high-temperature ceramic | The most heat a reusable surface takes; small shields only |
 
 **Inflatable heat shield**: light protection spread over a huge area.
 
@@ -56,6 +58,22 @@ Create an empty folder called `GameData/RealTPSNoSpeculative` and they're gone.
 | Ceramic-Cloth Blanket (Gen 1) | The basic blanket, available from the start | Light payloads from low orbit |
 | Silicon-Carbide Blanket (Gen 2) | A blanket that takes more heat | Low orbit with more margin |
 | Advanced Aerogel Blanket (Gen 3) *(theoretical)* | A projected blanket that has never flown | Low orbit with the most margin |
+| Woven Carbon Fabric (ADEPT) * | Carbon cloth stretched over ribs | Faster entries than the blankets can take |
+
+\* Placeholder part: see the notice below.
+
+## Important notice
+
+**Some materials sit on stock parts only so they aren't left unusable**: the LI-900 tiles, TUFROC, reinforced
+carbon-carbon and UHTC on the stock heat shields, and the ADEPT fabric on the stock inflatable shield. In real life
+they need parts with a different shape, look and construction, and those parts don't exist yet. They work fine in
+the model; the part you see is just a stand-in ([Placeholder parts](docs/wiki/Placeholder-parts.md)).
+
+**A note from me:** I'm not a 3D modeller. I'm doing my best to learn how to make these shields, and new parts
+will come when I can make them properly. Until then, this is how it stays.
+
+RealTPS is still young, and most of it has only been tested by me. If something looks wrong, please report it.
+
 
 ## License
 

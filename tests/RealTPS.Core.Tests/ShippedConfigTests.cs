@@ -73,6 +73,20 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EveryShippedMaterialHasAPart()
+        {
+            // Every shipped material has a part, some of them a stock part standing
+            // in for one that does not exist yet (docs/wiki/Placeholder-parts.md). Profiles without a host
+            // are still supported; the fixtures test them.
+            MaterialCatalogue catalogue = LoadCatalogue();
+            List<HostDefinition> hosts = LoadHosts(catalogue, new List<ValidationIssue>());
+            foreach (MaterialDefinition m in catalogue.Materials)
+            {
+                Assert.True(PatchGenerator.IsAssigned(m, hosts), "no host lists " + m.Id);
+            }
+        }
+
+        [Fact]
         public void EveryFamilyHasAtLeastOneProfile()
         {
             MaterialCatalogue catalogue = LoadCatalogue();
