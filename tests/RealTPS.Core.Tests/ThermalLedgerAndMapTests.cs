@@ -541,6 +541,63 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void EachViewMarksOnlyWhatItMeasures()
+        {
+            Assert.Equal(CellFlags.Exposed | CellFlags.LowReserve, ShieldMapData.Marks(ShieldView.Reserve));
+            Assert.Equal(CellFlags.CriticalIntegrity, ShieldMapData.Marks(ShieldView.Integrity));
+            Assert.Equal(CellFlags.BondAtRisk, ShieldMapData.Marks(ShieldView.SubstrateTemp));
+            Assert.Equal(CellFlags.BondAtRisk, ShieldMapData.Marks(ShieldView.BondMargin));
+            Assert.Equal(CellFlags.None, ShieldMapData.Marks(ShieldView.Received));
+
+            // A cell that only ran out of material: exposed in the reserve view, a sound cell in the integrity view.
+            const int size = 128;
+            MaterialDefinition m = TestMaterials.Ablator();
+            ShieldState state = ShieldSolverTests.Stocked(m, null, 0.8);
+            state.Inventory[9] = 0.0;
+            ShieldMapData data = Data(state, m);
+            Assert.Equal(CellFlags.Exposed, data.Flags[9]);
+            var cells = new int[size * size];
+            var rgba = new byte[size * size * 4];
+            ShieldMapRenderer.CellMap(data.Layout, size, cells);
+            ShieldMapRenderer.Render(data, ShieldView.Integrity, MapScale.For(ShieldView.Integrity, 520.0), cells, size, false, -1, rgba);
+            int first = -1;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] < 0)
+                {
+                    continue;
+                }
+                if (first < 0)
+                {
+                    first = p;
+                }
+                for (int ch = 0; ch < 3; ch++)
+                {
+                    Assert.Equal(rgba[first * 4 + ch], rgba[p * 4 + ch]);   // every cell sound: one colour, no hatch, no edge
+                }
+            }
+
+            // A cell that gave way (integrity gone) is exposed and also marked in the integrity view.
+            ShieldState shed = ShieldSolverTests.Stocked(m, null, 0.8);
+            shed.Inventory[9] = 0.0;
+            shed.Integrity[9] = 0.0;
+            data = Data(shed, m);
+            Assert.Equal(CellFlags.Exposed | CellFlags.CriticalIntegrity, data.Flags[9]);
+            Assert.Equal(1, data.ExposedCells);
+            Assert.Equal(0, data.CriticalCells);                        // counted once, as exposed
+            ShieldMapRenderer.Render(data, ShieldView.Integrity, MapScale.For(ShieldView.Integrity, 520.0), cells, size, false, -1, rgba);
+            int dots = 0;
+            for (int p = 0; p < size * size; p++)
+            {
+                if (cells[p] == 9 && rgba[p * 4] == 255 && rgba[p * 4 + 1] == 255 && rgba[p * 4 + 2] == 255)
+                {
+                    dots++;
+                }
+            }
+            Assert.True(dots > 10);
+        }
+
+        [Fact]
         public void ScalesAreFixedAndPointTheRightWay()
         {
             MapScale reserve = MapScale.For(ShieldView.Reserve, 520.0);
