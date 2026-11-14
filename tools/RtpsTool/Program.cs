@@ -221,6 +221,16 @@ namespace RtpsTool
                     repo.TechTrees.Add(TechTreeOverrides.Load(Path.GetFileName(file), File.ReadAllText(file), repo.Catalogue, repo.Issues));
                 }
             }
+
+            // A material that no host lists is allowed (it waits for a part that fits it), but no part offers it,
+            // and it may be a forgotten assignment.
+            foreach (MaterialDefinition m in repo.Catalogue.Materials)
+            {
+                if (!PatchGenerator.IsAssigned(m, repo.Hosts))
+                {
+                    repo.Issues.Add(new ValidationIssue(false, "material '" + m.Id + "'", "no host lists it, so no part offers it"));
+                }
+            }
             var parts = new HashSet<string>(StringComparer.Ordinal);
             foreach (HostDefinition host in repo.Hosts)
             {

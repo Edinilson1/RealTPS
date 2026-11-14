@@ -100,6 +100,36 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void SpeculativeIsOptionalAndSurvivesASnapshot()
+        {
+            Assert.False(TestMaterials.Tile().Speculative);
+            Assert.DoesNotContain("speculative", CfgParser.Write(MaterialWriter.Write(TestMaterials.Tile())));
+
+            // The tile has a techNode, so it may be speculative (a speculative material is never a baseline).
+            MaterialDefinition m = TestMaterials.Parse(TestMaterials.TileCfg.Replace("family = rigid_reusable", "family = rigid_reusable\n    speculative = true"));
+            Assert.True(m.Speculative);
+
+            var issues = new List<ValidationIssue>();
+            MaterialDefinition back;
+            Assert.Equal(MaterialParser.SnapshotStatus.Ok, MaterialParser.ParseSnapshot(MaterialWriter.Write(m), issues, out back));
+            Assert.True(back.Speculative);
+        }
+
+        [Fact]
+        public void SnapshotsWithTheRemovedKeysStillLoad()
+        {
+            // Saves written before realismTier and availabilityStatus were removed still carry them.
+            CfgNode old = MaterialWriter.Write(TestMaterials.Ablator());
+            old.AddValue("realismTier", "historical");
+            old.AddValue("availabilityStatus", "ASSIGNED");
+            var issues = new List<ValidationIssue>();
+            MaterialDefinition back;
+            Assert.Equal(MaterialParser.SnapshotStatus.Ok, MaterialParser.ParseSnapshot(old, issues, out back));
+            Assert.DoesNotContain(issues, i => i.IsError);
+            Assert.False(back.Speculative);
+        }
+
+        [Fact]
         public void NonAblativeFamiliesMayNotDeclareACoolingSink()
         {
             string cfg = TestMaterials.TileCfg.Replace("techNode = hypersonicFlight", "techNode = hypersonicFlight\n    ABLATION { resource = RtpsX\n onsetTemp = 600\n activationTemp = 8000\n rateCoefficient = 1\n heatOfAblation = 1e6 }");

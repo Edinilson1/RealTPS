@@ -148,6 +148,15 @@ namespace RealTPS.Core.Materials
             {
                 Error(issues, subject, "family must be rigid_ablative, rigid_reusable, flexible_insulating or deployable_radiative");
             }
+            string speculative = (node.GetValue("speculative") ?? "false").Trim();
+            if (string.Equals(speculative, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                m.Speculative = true;
+            }
+            else if (!string.Equals(speculative, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                Error(issues, subject, "speculative must be true or false");
+            }
 
             m.PermittedHostClasses = ReadTokens(node, "permittedHostClasses", issues, subject);
             if (m.PermittedHostClasses.Count == 0)

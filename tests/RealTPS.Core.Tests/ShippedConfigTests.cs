@@ -87,6 +87,16 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void OnlyTheFictionalAndTheTheoreticalMaterialAreSpeculative()
+        {
+            // The README promises exactly these two to anyone who creates GameData/RealTPSNoSpeculative.
+            MaterialCatalogue catalogue = LoadCatalogue();
+            Assert.Equal(
+                new[] { "ftps-aerogel-gen3", "intumescent-composite" },
+                catalogue.Materials.Where(m => m.Speculative).Select(m => m.Id).OrderBy(id => id, StringComparer.Ordinal));
+        }
+
+        [Fact]
         public void EveryFamilyHasAtLeastOneProfile()
         {
             MaterialCatalogue catalogue = LoadCatalogue();
