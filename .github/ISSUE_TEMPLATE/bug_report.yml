@@ -1,0 +1,110 @@
+name: Bug report
+description: Something in RealTPS does not work as it should.
+title: "[Bug]: "
+labels: [bug, unconfirmed]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report a bug.
+
+        Only the latest RealTPS release, on KSP 1.12.5, is supported: please update before reporting.
+        Reproduce the bug with as few mods as possible: ideally RealTPS, ModuleManager and B9PartSwitch only.
+        Deadly Reentry isn't compatible with RealTPS for now (README, "Mod compatibility and support").
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: Planetary system
+      options:
+        - Stock
+        - Real Solar System
+        - Another planet pack (say which in the description)
+    validations:
+      required: true
+
+  - type: input
+    id: part-material
+    attributes:
+      label: Part and material
+      description: Which shield or pod, and which RealTPS material was selected on it.
+      placeholder: "Heat Shield (2.5m), Avcoat"
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What went wrong? Say where you saw it (the shield window, the part menu, an on-screen message, the part exploding).
+      placeholder: Clear and short description of the bug.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps someone else can follow.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mods
+    attributes:
+      label: Installed mods
+      description: The folders in your GameData, or your CKAN mod list.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Attach (or link) one or more of these; a zip is fine:
+        - `KSP.log`, in the KSP install folder, next to the game executable;
+        - `Player.log`, the Unity log, useful after a crash. On Windows: `%USERPROFILE%\AppData\LocalLow\Squad\Kerbal Space Program\`.
+
+        For heating, wear or failure problems, turn the RealTPS telemetry on before the flight. Create `GameData/RealTPS_Telemetry.cfg` with:
+
+        ```
+        RTPS_SETTINGS
+        {
+            telemetryLog = true
+        }
+        ```
+
+        The `KSP.log` then has one `[RealTPS] telemetry:` line per second per shield.
+      placeholder: Attach KSP.log and/or Player.log, or paste links here.
+    validations:
+      required: true
+
+  - type: textarea
+    id: craft
+    attributes:
+      label: Craft file (optional)
+      description: If the problem happens with a specific vessel, attach its .craft file. Remove parts from other mods unless they are needed to reproduce the problem.
+      placeholder: Attach the craft file and say how to use it.
+
+  - type: textarea
+    id: quicksave
+    attributes:
+      label: Quicksave (optional)
+      description: A quicksave taken just before the problem helps a lot (for example, before the reentry). Remove other vessels unless they matter.
+      placeholder: Attach the quicksave and say which situation it is.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I read CONTRIBUTING.md and searched the existing issues.
+          required: true
+        - label: I am using the latest RealTPS release.
+          required: true
+        - label: I installed RealTPS cleanly (older `KerbalAblativeMaterials` or `KerbalThermalProtectionSystems` folders removed from GameData).
+          required: true
+        - label: I am willing to help test a fix.

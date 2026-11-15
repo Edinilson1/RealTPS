@@ -1,0 +1,93 @@
+name: Balance / realism feedback
+description: A material or shield survives too easily, fails too soon, or behaves unrealistically.
+title: "[Balance]: "
+labels: [balance]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Balance is tuned in a numerical model (`docs/sources/MISSION_TEST_MATRIX.md`), and real flights in the game are what correct it. A telemetry log of your flight makes the report much more useful.
+        Only the latest RealTPS release is supported: please update before reporting.
+
+  - type: input
+    id: part-material
+    attributes:
+      label: Part and material
+      placeholder: "Heat Shield (2.5m), PICA"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: system
+    attributes:
+      label: Planetary system
+      options:
+        - Stock
+        - Real Solar System
+        - Another planet pack (say which below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: difficulty
+    attributes:
+      label: RealTPS difficulty
+      options:
+        - Friendly
+        - Realistic
+        - Strict
+        - Custom (say what you changed below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: situation
+    attributes:
+      label: The flight
+      description: Body, entry speed (surface speed), periapsis or entry angle, craft mass, and how the shield faced the flow.
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened, and what you expected
+      description: For example "used 95% of the material and exploded at 1900 K; I expected about half to be left".
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why you expected that
+      description: A real-world reference (a mission, a test, a paper), or a comparison with another material in RealTPS.
+
+  - type: textarea
+    id: telemetry
+    attributes:
+      label: Telemetry log
+      description: |
+        Turn the telemetry on before the flight. Create `GameData/RealTPS_Telemetry.cfg` with:
+
+        ```
+        RTPS_SETTINGS
+        {
+            telemetryLog = true
+        }
+        ```
+
+        then attach the `KSP.log` (KSP install folder).
+      placeholder: Attach KSP.log here.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I searched the existing issues.
+          required: true
+        - label: I am using the latest RealTPS release.
+          required: true
+        - label: I am willing to fly test builds.

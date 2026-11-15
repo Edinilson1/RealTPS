@@ -1,0 +1,51 @@
+# Two jobs, on every push and pull request (and by hand, from the Actions tab):
+# - checks: the unit tests, the config validation and the generated files;
+# - plugin: compiles the KSP plugin (src/RealTPS.KSP) against the stripped KSP 1.12.5 assemblies that the
+#   community publishes for this purpose (KSPModdingLibs/KSPLibs, through the KSPBuildTools action). The game
+#   itself is never in this repository. A local build against that package gave a DLL identical, byte for byte,
+#   to one built against a full KSP install.
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Tests and configs
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Unit tests
+        run: dotnet test tests/RealTPS.Core.Tests
+
+      - name: Validate configs, localization and material sources
+        run: dotnet run --project tools/RtpsTool -- validate
+
+      - name: Generated files are current
+        run: dotnet run --project tools/RtpsTool -- generate --check
+
+  plugin:
+    name: Compile the KSP plugin
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      # Downloads the stripped assemblies to /tmp/ksp and builds in Release with
+      # -p:KSPBT_ManagedPath=/tmp/ksp/KSP_x64_Data/Managed, which RealTPS.KSP.csproj accepts.
+      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@1.1.1
+        with:
+          solution-file-path: src/RealTPS.KSP/RealTPS.KSP.csproj

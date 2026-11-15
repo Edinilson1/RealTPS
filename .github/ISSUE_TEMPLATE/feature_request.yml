@@ -1,0 +1,46 @@
+name: Feature request
+description: An idea for how RealTPS works, its window or its options.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        RealTPS is made by one person (plus contributors), for fun and unpaid. Please be respectful, and keep the workload in mind.
+
+        For a new material, a balance problem or another mod's parts, use those forms instead. Translations are best sent as a pull request.
+
+  - type: textarea
+    id: request
+    attributes:
+      label: Request
+      description: What problem would this solve, and what do you propose? Mention any workaround you use today.
+      placeholder: |
+        Problem / motivation: ...
+        Proposed solution: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other ways to get the same result, including a config-only change.
+      placeholder: Optional, but helpful.
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact and drawbacks
+      description: Think about realism, gameplay, performance, existing saves and craft, and how much it adds to maintain.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I read CONTRIBUTING.md and searched the existing issues.
+          required: true
+        - label: I am willing to help test it (or to contribute it, if I can).

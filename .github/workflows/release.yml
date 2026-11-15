@@ -1,0 +1,77 @@
+# Builds the release zip. Runs when a release is published on GitHub, and by hand (Actions tab) to test the
+# packaging without releasing: a manual run keeps the zip as a download of that run and publishes nothing.
+#
+# The zip holds GameData/RealTPS, with the plugin compiled here from this exact source (against the stripped
+# KSP 1.12.5 assemblies of KSPModdingLibs/KSPLibs, as in CI), plus README.md, LICENSE and CHANGELOG.md.
+# CKAN reads it through netkan/RealTPS.netkan ($kref: this repository's releases; $vref: RealTPS.version).
+#
+# Before a release: set the same version in GameData/RealTPS/RealTPS.version and in
+# src/RealTPS.KSP/Properties/AssemblyInfo.cs, and name the release tag after it (v0.20.0 for 0.20.0).
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Build the release zip
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Read and check the version
+        id: version
+        shell: bash
+        run: |
+          version=$(jq -r '"\(.VERSION.MAJOR).\(.VERSION.MINOR).\(.VERSION.PATCH)"' GameData/RealTPS/RealTPS.version)
+          assembly=$(sed -n 's/.*AssemblyVersion("\([0-9.]*\)").*/\1/p' src/RealTPS.KSP/Properties/AssemblyInfo.cs)
+          echo "RealTPS.version: $version; AssemblyVersion: $assembly"
+          if [ "${assembly%.*}" != "$version" ]; then
+            echo "::error::AssemblyVersion $assembly does not match RealTPS.version $version"
+            exit 1
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "release" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::The release tag $GITHUB_REF_NAME does not match RealTPS.version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      # Downloads the stripped assemblies and builds in Release, which puts the DLL in GameData/RealTPS/Plugins.
+      - uses: KSPModdingLibs/KSPBuildTools/.github/actions/compile@1.1.1
+        with:
+          solution-file-path: src/RealTPS.KSP/RealTPS.KSP.csproj
+
+      - name: Package
+        shell: bash
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          test -f GameData/RealTPS/Plugins/RealTPSRuntime.dll
+          staging="dist/RealTPS-$version"
+          mkdir -p "$staging/GameData"
+          cp -r GameData/RealTPS "$staging/GameData/"
+          cp README.md LICENSE CHANGELOG.md "$staging/"
+          (cd "$staging" && zip -r -X "../RealTPS-$version.zip" .)
+          unzip -l "dist/RealTPS-$version.zip"
+
+      - name: Attach the zip to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" "dist/RealTPS-${{ steps.version.outputs.version }}.zip" --repo "$GITHUB_REPOSITORY" --clobber
+
+      - name: Keep the zip as a download of this run
+        if: github.event_name != 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: RealTPS-${{ steps.version.outputs.version }}
+          path: dist/RealTPS-${{ steps.version.outputs.version }}.zip

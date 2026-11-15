@@ -1,7 +1,12 @@
 # Build output
 bin/
 obj/
+dist/
 artifacts/
+
+# The plugin is compiled, never committed: a local build puts it here for testing, and the release workflow
+# (.github/workflows/release.yml) compiles it from the tagged source into the release zip.
+GameData/RealTPS/Plugins/*.dll
 
 # Editors and OS
 .vs/

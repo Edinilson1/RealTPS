@@ -26,6 +26,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <KSPRoot Condition="'$(KSPRoot)' == ''">$(KSP_ROOT)</KSPRoot>
     <KSPManaged>$(KSPRoot)/KSP_x64_Data/Managed</KSPManaged>
+    <!-- The KSPBuildTools CI action passes the managed folder itself (.github/workflows/ci.yml). -->
+    <KSPManaged Condition="'$(KSPBT_ManagedPath)' != ''">$(KSPBT_ManagedPath)</KSPManaged>
   </PropertyGroup>
 
   <ItemGroup>

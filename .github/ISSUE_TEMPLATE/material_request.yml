@@ -1,0 +1,77 @@
+name: Material request
+description: Suggest a new thermal protection material.
+title: "[Material]: "
+labels: [material]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every number in RealTPS records where it comes from (`docs/sources/MATERIAL_SOURCES.md`). A material with real sources can be added much sooner than one without them.
+        Check that list first: the material may already be there under another name.
+
+  - type: input
+    id: name
+    attributes:
+      label: Material name
+      placeholder: "e.g. Phenolic-nylon"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: family
+    attributes:
+      label: Kind of material
+      options:
+        - Ablator (burns away to carry heat off)
+        - Reusable surface (tiles, hot structures)
+        - Flexible blanket (inflatable shields)
+        - Deployable fabric
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: real-use
+    attributes:
+      label: Real-world use
+      description: Which vehicles or missions used it, or whether it was only tested. Say if it is fictional or theoretical.
+    validations:
+      required: true
+
+  - type: textarea
+    id: sources
+    attributes:
+      label: Sources and numbers
+      description: |
+        Links to papers, NASA reports or data sheets, and the numbers you found: density, specific heat, conductivity, emissivity, temperature limits, typical thickness.
+        Say which numbers are guesses.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: parts
+    attributes:
+      label: Which parts should carry it?
+      multiple: true
+      options:
+        - The stock rigid heat shields
+        - The Making History pods
+        - The stock inflatable shield
+        - It needs a part that does not exist yet
+    validations:
+      required: true
+
+  - type: textarea
+    id: niche
+    attributes:
+      label: Where it should stand
+      description: What it should do better or worse than the materials already in RealTPS (mass, cost, temperature, missions).
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked `docs/sources/MATERIAL_SOURCES.md` and the existing issues.
+          required: true
+        - label: I am willing to help test it.

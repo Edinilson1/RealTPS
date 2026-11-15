@@ -1,0 +1,68 @@
+name: Mod support / compatibility
+description: Ask for RealTPS to support another mod, or report a conflict with one.
+title: "[Mod Support]: "
+labels: [mod support]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this to ask for another mod's heat shields or pods to get RealTPS materials, for a compatibility patch, or for support of another tech tree or planet pack.
+
+        Enrolling a part is usually one config entry in `data/hosts/` (see `docs/wiki/Modding.md`), so config pull requests are especially welcome.
+        Known conflict: Deadly Reentry (README, "Mod compatibility and support").
+
+  - type: input
+    id: mod-name
+    attributes:
+      label: Other mod name and version
+      placeholder: "e.g. Near Future Spacecraft 1.4.3"
+    validations:
+      required: true
+
+  - type: input
+    id: mod-link
+    attributes:
+      label: Other mod link
+      description: Forum thread, GitHub, SpaceDock or CKAN page.
+      placeholder: "https://..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of support?
+      options:
+        - Its heat shields or pods should get RealTPS materials
+        - The two mods conflict and need a compatibility patch
+        - Its tech tree should place the RealTPS unlocks
+        - Planet pack or rescale (heating feels wrong there)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: |
+        Which parts or modules are affected (internal part names help, e.g. `name = ...` in the part config)?
+        For shields: their size, and which side faces the heat. For a conflict: what goes wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / examples (optional)
+      description: For a conflict, attach `KSP.log` and `GameData/ModuleManager.ConfigCache`; screenshots or an example craft also help.
+      placeholder: Attach files or paste links here.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I read the README ("Mod compatibility and support") and the modding reference, and searched the existing issues.
+          required: true
+        - label: I am willing to help test it (or to contribute a config pull request, if I can).
