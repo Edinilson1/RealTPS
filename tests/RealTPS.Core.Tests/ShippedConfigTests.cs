@@ -97,6 +97,25 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void TheWikiExampleConfigIsValid()
+        {
+            // docs/wiki/example.cfg documents every parameter; its materials and host must stay valid.
+            CfgNode root = CfgParser.Parse(Read("docs/wiki/example.cfg"));
+            MaterialCatalogue catalogue = MaterialCatalogue.Load(root.GetNodes(MaterialParser.NodeName));
+            Assert.Empty(catalogue.Issues);
+            Assert.Equal(new[] { "example-ablator", "example-tile" }, catalogue.Materials.Select(m => m.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray());
+
+            var issues = new List<ValidationIssue>();
+            List<CfgNode> hosts = root.GetNodes(HostDefinition.NodeName).ToList();
+            Assert.Single(hosts);
+            HostDefinition host = HostDefinition.Parse(hosts[0], issues);
+            Assert.NotNull(host);
+            Compatibility.ValidateHost(host, catalogue, issues);
+            Assert.Empty(issues);
+            Assert.Equal(new[] { "example-ablator", "example-tile" }, host.Materials.ToArray());
+        }
+
+        [Fact]
         public void EveryFamilyHasAtLeastOneProfile()
         {
             MaterialCatalogue catalogue = LoadCatalogue();
