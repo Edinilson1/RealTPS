@@ -18,7 +18,8 @@ and a heat shield is no longer just a bar that drains: it wears unevenly, it can
 ## Download and installation
 
 1. Back up your saves.
-2. Copy `GameData/RealTPS` from the zip into your KSP `GameData` folder.
+2. Copy `GameData/RealTPS` from the zip into your KSP `GameData` folder. If you have an older
+   `GameData/KerbalAblativeMaterials` or `GameData/KerbalThermalProtectionSystems` folder, delete it first.
 3. Make sure ModuleManager and B9PartSwitch are installed. Without them RealTPS does nothing, and a message tells
    you why.
 
@@ -79,6 +80,9 @@ RealTPS is still young, and most of it has only been tested by me. If something 
 
 RealTPS is released under the [MIT license](LICENSE). It doesn't contain code, models or configs from any other
 mod.
+
+Before RealTPS, the mod was called Kerbal Ablative Materials and then Kerbal Thermal Protection Systems. Nothing
+was ever released under those names.
 
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
