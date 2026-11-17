@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    Per-machine settings for building the KSP plugin. Copy this file to RealTPS.KSP.csproj.user (same folder)
+    and put the path of your KSP 1.12.x install below. MSBuild reads the .user file by itself; git ignores it
+    (*.user in .gitignore), so each machine keeps its own path. The install is only read.
+
+    -p:KSPRoot="..." on the command line and the KSP_ROOT environment variable still work and win over this file.
+  -->
+  <PropertyGroup>
+    <KSPRoot Condition="'$(KSP_ROOT)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program</KSPRoot>
+    <!-- The project computes this before reading the .user file, so it is set again here from the path above. -->
+    <KSPManaged>$(KSPRoot)/KSP_x64_Data/Managed</KSPManaged>
+  </PropertyGroup>
+</Project>

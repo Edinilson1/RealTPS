@@ -5,7 +5,8 @@
 
     The game assemblies are referenced, never copied. Point KSPRoot at any KSP 1.12.x install:
       dotnet build src/RealTPS.KSP -c Release -p:KSPRoot="C:\path\to\Kerbal Space Program"
-    or set the KSP_ROOT environment variable. The install is only read.
+    or set the KSP_ROOT environment variable, or copy RealTPS.KSP.csproj.user.example to
+    RealTPS.KSP.csproj.user (one per machine, ignored by git) and put the path there. The install is only read.
 
     Only a Release build is copied into GameData/RealTPS/Plugins, so building or testing the whole solution
     (Debug) never replaces the plugin that ships.
@@ -83,7 +84,7 @@
 
   <Target Name="RtpsCheckKspRoot" BeforeTargets="ResolveAssemblyReferences">
     <Error Condition="!Exists('$(KSPManaged)/Assembly-CSharp.dll')"
-           Text="KSP assemblies not found. Pass -p:KSPRoot=&quot;path to Kerbal Space Program&quot; or set KSP_ROOT. Looked in: $(KSPManaged)" />
+           Text="KSP assemblies not found. Pass -p:KSPRoot=&quot;path to Kerbal Space Program&quot;, set KSP_ROOT, or copy RealTPS.KSP.csproj.user.example to RealTPS.KSP.csproj.user and put the path there. Looked in: $(KSPManaged)" />
   </Target>
 
 </Project>

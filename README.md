@@ -23,6 +23,9 @@ and a heat shield is no longer just a bar that drains: it wears unevenly, it can
 3. Make sure ModuleManager and B9PartSwitch are installed. Without them RealTPS does nothing, and a message tells
    you why.
 
+The source code in this repository doesn't include the compiled plugin: use a release, or build it yourself
+([CONTRIBUTING.md]).
+
 Don't want the two speculative materials (the fictional intumescent composite and the theoretical Gen 3 blanket)?
 Create an empty folder called `GameData/RealTPSNoSpeculative` and they're gone.
 
@@ -87,3 +90,4 @@ was ever released under those names.
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
 [Community Tech Tree]: https://github.com/post-kerbin-mining-corporation/CommunityTechTree
+[CONTRIBUTING.md]: CONTRIBUTING.md
