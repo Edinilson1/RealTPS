@@ -3,6 +3,64 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.20.0 for KSP 1.12.x
+
+ - 2026-11-17
+
+### Changes since the previous version
+
+* Changed: New name. Kerbal Ablative Materials is now RealTPS (it was Kerbal Thermal Protection Systems for a few
+  days in between): GameData folder `RealTPS`, plugin `RealTPSRuntime.dll`, module `ModuleRtpsShield`, prefixes
+  `RTPS_`, `Rtps` and `#LOC_RTPS_`, no-speculative switch folder `RealTPSNoSpeculative`. Nothing was released under
+  the old names, so there's no save migration: delete the old `GameData/KerbalAblativeMaterials` or
+  `GameData/KerbalThermalProtectionSystems` folder before installing.
+* Changed: A shield never comes off by itself. A failed dedicated shield with nothing attached below it used to
+  detach; now every failure is "protection lost": the shield stays on the vessel, its surface limit drops to that of
+  the bare part, and the game destroys it if it overheats. `partRole` stays, since it still decides where breach
+  heat goes.
+* Changed: Every material can be selected now. Reinforced Carbon-Carbon (all five rigid shields, `aerospaceTech`),
+  UHTC (the 0.625 m and 1.25 m shields, `experimentalScience`) and the ADEPT Woven Carbon Fabric (inflatable shield,
+  `aerospaceTech`) sit on stock parts as placeholders until parts of their own exist. LI-900 and TUFROC are marked
+  as placeholders too, and every placeholder says so in its description.
+* Added: With Community Tech Tree, Reinforced Carbon-Carbon and the ADEPT fabric unlock at `aerospaceComposites`
+  and UHTC at `advAerospaceEngineering`.
+* Changed: ADEPT fabric bond limit 900 → 2400 K. The cloth is free between the ribs, so nothing is bonded behind it
+  (as with RCC and UHTC); the 900 K rib and joint limit belongs to a future part with ribs. With the old limit the
+  fabric failed on every entry the numerical model flew on the inflatable shield.
+* Added: Breach heat from engine jets. An exposed cell now passes on part of the jet heat that falls on it, not
+  only part of the heat from the air, so a jet that burns a hole heats whatever is behind it, even on the launch
+  pad. That heat leaves along the mean direction of the air and the jets, weighted by what each one passes on.
+* Added: Telemetry field `breachReqKw`, the heat the exposed cells tried to pass on, next to `breachKw`, the heat
+  that actually found a part behind the hole.
+* Changed: Shield window: each tab only marks the alerts about what it shows (Reserve: exposed and low reserve;
+  Integrity: critical; the two bond tabs: bond at risk; Heat received: none). With every alert on every tab, a cell
+  out of material hid its own temperature and integrity. An exposed cell whose integrity is gone is also marked in
+  the Integrity tab, and still counted once.
+* Changed: Shield window: the note under the legend is now one sentence per tab, saying what the tab shows, and the
+  pattern key lists only the patterns of the current tab.
+* Removed: The wind and planet markers around the map.
+
+### For Modders
+
+* The `detached` failure is gone: `tpsFailure` is `none` or `protection_lost`, and `OnRtpsStateChanged` no longer
+  sends `detached`.
+* Translations: only `en-us` is required. Another language may leave tags out (its players then see the raw tag),
+  but every tag it has must keep the same `<<n>>` placeholders.
+* `realismTier` is replaced by `speculative = true`, on the Intumescent Composite and the Gen 3 blanket. The other
+  tiers were only labels; each material's detail line still states its basis.
+* `availabilityStatus` is gone: a material is offered exactly where a host lists it, and `validate` warns about a
+  material that no host lists.
+* A material config with either old key is rejected. Profiles already stored in saves still load.
+
+### Known Issues
+
+* Deadly Reentry isn't compatible for now: it turns the ablator of the stock heat shields and the KV pods into its
+  own heat shield module, which RealTPS doesn't remove, so both mods end up handling the same part. The startup
+  check lists each of those parts.
+* Heat shields from other mods aren't enrolled yet and keep their stock behaviour.
+* The placeholder parts work in the model, but they don't have the shape or the look of the real thing.
+* The protected face of a KV pod is modelled as a flat disc.
+
 ## v0.19.0 for KSP 1.12.x
 
  - 2026-11-10

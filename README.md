@@ -34,7 +34,7 @@ skin temperature against its limit, and the heat the burning cork is carrying aw
 
 There's a lot more detail in the **[Wiki](docs/wiki/Home.md)**.
 
-## Current version: 0.19.0
+## Current version: 0.20.0 (candidate, not released yet)
 
 **Download**: GitHub releases or CKAN\
 **Docs & support**: **[Wiki](docs/wiki/Home.md)** - GitHub issues\
