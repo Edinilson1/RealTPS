@@ -2,6 +2,9 @@
 # Configs must also stay UTF-8 without a byte-order mark: git does not enforce that, `RtpsTool validate` does.
 * text=auto eol=lf
 
+# Copies of game logs kept as evidence: stored exactly as the game wrote them.
+*.log -text
+
 # Binaries: never converted or diffed as text.
 *.dll binary
 *.dds binary
