@@ -3,7 +3,7 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
-## v0.20.0 for KSP 1.12.x
+## v0.20.0 for KSP 1.12.x - First official release
 
  - 2026-11-17
 
@@ -86,12 +86,6 @@ written as they are today.
   with Community Tech Tree).
 * Added: Startup check for resources: a material whose resource has no `RESOURCE_DEFINITION` (say, a material from
   another mod that forgot to define it) is named at the main menu, since no shield can carry it.
-* Changed: Difficulty is back to Friendly, Realistic, Strict and Custom, with the calibrated damage times (8 s
-  surface, 60 s bond, 10 s structure) at every level. The levels differ in damage rate (0.5×, 1×, 1.5×), breach
-  heat share (a quarter, half, three quarters) and variation between cells (none, 2 %, 5 %).
-* Removed: The real-scale presets and `Difficulty/RealSolarSystem.cfg`. RealTPS reads the heating the game works
-  out, so a bigger system's longer, hotter entries reach the shield on their own. Saves made with the old presets
-  open on the level of the same name (StockRealistic and Realistic both become Realistic, and so on).
 * Changed: The Brazilian Portuguese detail lines use a decimal comma.
 
 ### For Modders
@@ -112,9 +106,6 @@ written as they are today.
   unknown keys are ignored, each with a warning in KSP.log: a bad patch never stops the game.
 * Added: A new game takes its preset from the stock difficulty level (Easy: Friendly; Normal and Moderate:
   Realistic; Hard: Strict).
-* Changed: The presets come in two families: StockFriendly, StockRealistic and StockStrict for the stock system,
-  and Friendly, Realistic and Strict for real-scale systems, with damage times three times longer
-  (`Difficulty/RealSolarSystem.cfg`).
 
 ## v0.17.0 for KSP 1.12.x
 
