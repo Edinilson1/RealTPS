@@ -77,6 +77,15 @@ or **Custom**. They only change the damage model: how fast surfaces, bonds and s
 gets through breaches, a small fixed difference between cells, and switches for damage, failure, breaches and
 on-screen warnings. Custom lets you set each one yourself.
 
+| Preset | Damage rate | Heat through breaches | Difference between cells |
+|---|---|---|---|
+| Friendly | half | a quarter | none |
+| Realistic | the calibrated model | half | 2% |
+| Strict | 1.5 times | three quarters | 5% |
+
+No preset changes how the materials burn or insulate. A larger solar system, like Real Solar System, doesn't need a
+preset of its own: its longer, hotter entries already reach the shield through the game.
+
 ## Speculative materials
 
 Two of the materials aren't real: the fictional intumescent composite and the theoretical Gen 3 blanket. If you

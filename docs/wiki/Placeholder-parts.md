@@ -14,8 +14,6 @@ At first, a material with no part that fit it was simply left off the stock part
 can be used. A material that no part lists is still allowed (it's loaded, but nobody can pick it, and `validate`
 warns about it), but none of the shipped ones is like that anymore.
 
-In the game, the description of each of these materials ends with a **Placeholder part** note.
-
 ## Every material, checked against its stock part
 
 | Material | Stock parts | Fit | Why |

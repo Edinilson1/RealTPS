@@ -6,7 +6,7 @@
 # CKAN reads it through netkan/RealTPS.netkan ($kref: this repository's releases; $vref: RealTPS.version).
 #
 # Before a release: set the same version in GameData/RealTPS/RealTPS.version and in
-# src/RealTPS.KSP/Properties/AssemblyInfo.cs, and name the release tag after it (v0.20.0 for 0.20.0).
+# src/RealTPS.KSP/Properties/AssemblyInfo.cs.
 name: Release
 
 on:
@@ -39,8 +39,8 @@ jobs:
             echo "::error::AssemblyVersion $assembly does not match RealTPS.version $version"
             exit 1
           fi
-          if [ "$GITHUB_EVENT_NAME" = "release" ] && [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
-            echo "::error::The release tag $GITHUB_REF_NAME does not match RealTPS.version $version"
+          if [ "$GITHUB_EVENT_NAME" = "release" ] && [ "$GITHUB_REF_NAME" != "$version" ]; then
+            echo "::error::The release tag $GITHUB_REF_NAME is not RealTPS.version $version (no v prefix)"
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"

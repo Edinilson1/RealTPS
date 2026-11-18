@@ -5,7 +5,7 @@ written as they are today.
 
 ## v0.20.0 for KSP 1.12.x - First official release
 
- - 2026-11-17
+ - 2026-11-18
 
 ### Changes since the previous version
 

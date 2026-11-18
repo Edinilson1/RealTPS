@@ -1,13 +1,16 @@
 {
     "identifier": "RealTPS",
     "name": "RealTPS",
-    "abstract": "Completely reworks how heat shields work, aiming at greater realism: real thermal protection materials chosen in the editor and unlocked through the tech tree, with per-cell wear, breaches and shield failure.",
-    "description": "Conflicts with Deadly Reentry until a compatibility patch exists: Deadly Reentry turns the ablator of the stock heat shields into its own heat-shield module, which RealTPS does not remove, so both mods end up handling the same part.",
+    "abstract": "Completely reworks how heat shields work, aiming at greater realism.",
     "author": "Edinilson",
-    "$kref": "#/ckan/github/OWNER/REPOSITORY",
+    "$kref": "#/ckan/github/Edinilson1/RealTPS",
     "$vref": "#/ckan/ksp-avc",
     "license": "MIT",
-    "release_status": "testing",
+    "resources": {
+        "repository": "https://github.com/Edinilson1/RealTPS",
+        "bugtracker": "https://github.com/Edinilson1/RealTPS/issues",
+        "manual": "https://github.com/Edinilson1/RealTPS/blob/master/docs/wiki/Home.md"
+    },
     "tags": [
         "plugin",
         "physics",
