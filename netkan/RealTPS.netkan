@@ -7,6 +7,7 @@
     "$vref": "#/ckan/ksp-avc",
     "license": "MIT",
     "resources": {
+        "homepage": "https://forum.kerbalspaceprogram.com/topic/232155-112x-realtps-real-thermal-protection-systems",
         "repository": "https://github.com/Edinilson1/RealTPS",
         "bugtracker": "https://github.com/Edinilson1/RealTPS/issues",
         "manual": "https://github.com/Edinilson1/RealTPS/blob/master/docs/wiki/Home.md"
@@ -20,8 +21,13 @@
         { "name": "ModuleManager" },
         { "name": "B9PartSwitch" }
     ],
+    "suggests": [
+        { "name": "Firefly" }
+    ],
     "supports": [
-        { "name": "CommunityTechTree" }
+        { "name": "CommunityTechTree" },
+        { "name": "OuterPlanetsMod" },
+        { "name": "RealSolarSystem" }
     ],
     "conflicts": [
         { "name": "DeadlyReentry" }
