@@ -5,7 +5,7 @@ using System.Reflection;
 [assembly: AssemblyCopyright("Copyright (c) 2026 Edinilson. MIT License.")]
 [assembly: AssemblyVersion("0.20.0.0")]
 [assembly: AssemblyFileVersion("0.20.0.0")]
-[assembly: AssemblyInformationalVersion("0.20.0-candidate")]
+[assembly: AssemblyInformationalVersion("0.20.0")]
 
 // Lets other plugins declare a dependency on RealTPS with KSPAssemblyDependency("RealTPSRuntime", 0, 20).
 [assembly: KSPAssembly("RealTPSRuntime", 0, 20)]
