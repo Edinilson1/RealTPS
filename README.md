@@ -126,8 +126,7 @@ RealTPS is still young, and most of it has only been tested by me. If something 
 - **ReStock** works: a patch points RealTPS to ReStock's renamed inflatable heat shield animation.
 - **KSPCommunityFixes: recommended.** Under time warp between 1x and 100x (physical warp during a reentry, for
   instance) the stock game over-counts radiation, so heat shields run cooler than at 1x: at 4x the radiation came
-  out twice as strong in a test flight. Its `FIUpdateRadiation` fix corrects that. Without it, RealTPS warns you on
-  screen when a shield heats up under warp.
+  out twice as strong in a test flight. Its `FIUpdateRadiation` fix corrects that.
 
 ## Documentation, help and bug reports
 
