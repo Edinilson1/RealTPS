@@ -48,5 +48,6 @@ each shield, starting with `[RealTPS] telemetry:`. The fields that matter most:
 | `plumeKw`, `plumeHits` | Heat from engine jets on the shield, kW, and how many nozzles hit it |
 | `exposed`, `integrity`, `structure` | Share of the face exposed, mean integrity and structure, 0 to 1 |
 | `bondMaxT` | The hottest bond (or bare structure, under an exposed cell), K |
+| `deploy` | Inflatable or deployable shields only: how far the shield is open, 0 to 1; `none` if its animation wasn't found |
 
 To turn it off, delete the file or set `telemetryLog = false`.

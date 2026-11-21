@@ -122,6 +122,7 @@ RealTPS is still young, and most of it has only been tested by me. If something 
 - **Heat shields from other mods** aren't supported yet and keep their stock behaviour. Adding one is usually a
   single config entry, so pull requests are welcome ([Modding reference](docs/wiki/Modding.md)).
 - **Planet packs and Real Solar System** should work without any special setting.
+- **ReStock** works: a patch points RealTPS to ReStock's renamed inflatable heat shield animation.
 
 ## Documentation, help and bug reports
 

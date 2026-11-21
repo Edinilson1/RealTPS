@@ -276,6 +276,23 @@ namespace RealTPS.Core.Tests
         }
 
         [Fact]
+        public void TheReStockPatchRenamesTheAnimationTheInflatableHostConfigures()
+        {
+            // ReStock renames the stock inflatable's animation; the patch must replace exactly the name the host
+            // writes, or its HAS stops matching and the plugin falls back without anyone noticing.
+            var issues = new List<ValidationIssue>();
+            HostDefinition host = LoadHosts(LoadCatalogue(), issues).Single(h => h.PartName == "InflatableHeatShield");
+            CfgNode root = CfgParser.Parse(Read("GameData/RealTPS/Patches/Compatibility/ReStock.cfg"));
+            CfgNode patch = Assert.Single(root.Nodes);
+            Assert.StartsWith("@PART[InflatableHeatShield]:HAS[@MODULE[ModuleAnimateGeneric]:HAS[#animationName[Inflate]]]", patch.Name);
+            Assert.Contains(":NEEDS[RealTPSRuntime&B9PartSwitch&ReStock]", patch.Name);
+            Assert.EndsWith(":AFTER[RealTPS]", patch.Name);
+            CfgNode module = Assert.Single(patch.Nodes);
+            Assert.Equal("@MODULE[" + PatchGenerator.ModuleName + "]:HAS[#deployAnimation[" + host.DeployAnimation + "]]", module.Name);
+            Assert.Equal("Inflate", module.GetValue("@deployAnimation"));
+        }
+
+        [Fact]
         public void EveryHostHasOneRtpsModuleOneSwitcherAndAnUnrestrictedBaseline()
         {
             MaterialCatalogue catalogue = LoadCatalogue();
