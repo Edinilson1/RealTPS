@@ -49,5 +49,11 @@ each shield, starting with `[RealTPS] telemetry:`. The fields that matter most:
 | `exposed`, `integrity`, `structure` | Share of the face exposed, mean integrity and structure, 0 to 1 |
 | `bondMaxT` | The hottest bond (or bare structure, under an exposed cell), K |
 | `deploy` | Inflatable or deployable shields only: how far the shield is open, 0 to 1; `none` if its animation wasn't found |
+| `warp` | The time warp rate |
 
 To turn it off, delete the file or set `telemetryLog = false`.
+
+**Fly heating tests at 1x, or with KSPCommunityFixes installed.** Under time warp between 1x and 100x the stock game
+over-counts radiation (about twice as much at 4x physical warp), so a shield runs cooler than it would at 1x. The
+`FIUpdateRadiation` fix of KSPCommunityFixes corrects that. The line at startup that starts with
+`[RealTPS] stock radiation under time warp` says whether it's active.

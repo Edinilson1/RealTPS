@@ -227,6 +227,7 @@ namespace RealTPS
         [NonSerialized] private double baseConductivity;
         [NonSerialized] private float nextUiRefresh;
         [NonSerialized] private double nextTelemetry;
+        private static float nextWarpNotice;
         [NonSerialized] private bool oxidising;
         [NonSerialized] private double grantedBreach;
         [NonSerialized] private Part[] recipients;
@@ -1279,10 +1280,32 @@ namespace RealTPS
             }
 
             UpdateContractFields();
+            CheckWarpRadiation();
             if (RtpsCatalogue.TelemetryLog)
             {
                 LogTelemetry(part.skinTemperature);
             }
+        }
+
+        /// <summary>
+        /// Time warp between 1x and 100x makes the stock game over-count radiation (<see cref="StockRadiationFix"/>), so
+        /// a heating shield runs cooler than at 1x. Said on screen while it happens, at most every ten minutes.
+        /// </summary>
+        private void CheckWarpRadiation()
+        {
+            double rate = TimeWarp.CurrentRate;
+            if (rate <= 1.0 || rate > PhysicsGlobals.ThermalMaxIntegrationWarp || (part.skinTemperature < 400.0 && sinkPowerKw <= 0.0))
+            {
+                return;
+            }
+            float now = Time.realtimeSinceStartup;
+            if (now < nextWarpNotice || StockRadiationFix.Current == StockRadiationFix.Status.Applied)
+            {
+                return;
+            }
+            nextWarpNotice = now + 600f;
+            RtpsLog.Warn(PartLabel() + ": heating at " + F(rate) + "x time warp; " + StockRadiationFix.Describe());
+            ScreenMessages.PostScreenMessage(Localizer.Format("#LOC_RTPS_msg_warp_radiation", F(rate)), 10f, ScreenMessageStyle.UPPER_CENTER);
         }
 
         /// <summary>True when the structure has given way and the failure has not been enacted yet.</summary>
@@ -1682,6 +1705,7 @@ namespace RealTPS
                 + " ut=" + now.ToString("F2", CultureInfo.InvariantCulture)
                 + " alt=" + F(vessel.altitude)
                 + " speed=" + F(vessel.srfSpeed)
+                + " warp=" + F(TimeWarp.CurrentRate)
                 + " skinT=" + F(skinTemp)
                 + " skinMax=" + F(part.skinMaxTemp)
                 + " intT=" + F(part.temperature)

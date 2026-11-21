@@ -107,6 +107,7 @@ namespace RealTPS
                 }
             }
             RtpsLog.Info("startup check: " + hosts + " enrolled host part(s), " + problems.Count + " problem(s)");
+            RtpsLog.Info(StockRadiationFix.Describe());
         }
 
         /// <summary>
