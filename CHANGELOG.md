@@ -3,6 +3,28 @@
 All notable changes to RealTPS. Versions follow semantic versioning. Names of files, config nodes and prefixes are
 written as they are today.
 
+## v0.20.1 for KSP 1.12.x
+
+ - 2026-11-21
+
+### Changes since the previous version
+
+* Fixed: With ReStock, the inflatable heat shield was treated as always open. ReStock renames its animation
+  (`Inflate` instead of `InflatableHS`), so RealTPS didn't find it, and a stowed shield caught engine jets and routed
+  breach heat as if it were 10 m wide. A ReStock patch (`Patches/Compatibility/ReStock.cfg`) now names the
+  animation, and in general, when no animation has the configured `deployAnimation` name and the part has only one,
+  RealTPS follows that one and says so in the log.
+* Added: The startup check reports a deployable shield whose opening animation can't be found (none on the part, or
+  several and none with the configured name).
+* Added: Telemetry field `deploy` on deployable shields: how far the shield is open, 0 to 1 (`none` when its
+  animation wasn't found).
+* Added: KSPCommunityFixes is now recommended, for a stock bug. Under time warp between 1x and 100x (physical warp
+  during a reentry, for instance) the game over-counts radiation, so heat shields run cooler than at 1x: at 4x the
+  radiation came out twice as strong in a test flight. RealTPS leaves the game's radiation alone; the
+  `FIUpdateRadiation` fix of KSPCommunityFixes corrects it. A line in `KSP.log` at startup says whether the fix is
+  active.
+* Added: Telemetry field `warp`, the time warp rate.
+
 ## v0.20.0 for KSP 1.12.x - First official release
 
  - 2026-11-18

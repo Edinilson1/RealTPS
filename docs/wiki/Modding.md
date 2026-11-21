@@ -185,7 +185,7 @@ A part becomes a host through a ModuleManager patch that names it exactly:
 | `backConductance` | 20 | Substrate → interior, W/(m² K) |
 | `substrateHeatCapacity` | 7300 | Plate behind the protection, J/(m² K) (about 3 mm of aluminium) |
 | `structureLimitTemp` | 0 | Limit of the structure the protection is bonded to, K; 0 = the material's `bondLimitTemp` alone |
-| `deployAnimation`, `deployedRadius` | empty, 0 | Inflatable or deployable shields: the `ModuleAnimateGeneric` animation and the open radius, m |
+| `deployAnimation`, `deployedRadius` | empty, 0 | Inflatable or deployable shields: the `ModuleAnimateGeneric` animation and the open radius, m. If no animation has that name and the part has only one (a remodelled part, such as ReStock's), that one is used; with several and none named, the startup check reports it |
 | `ownsConductivity` | true | Apply the stock occlusion rule to `heatConductivity`. Set false when another module owns that field |
 | `reentryConductivity` | 0.01 | Value used by that rule |
 | `legacyAblatorCapacity` | 0 | Stock `Ablator` the original part carried, kg. Enables legacy-craft conversion |

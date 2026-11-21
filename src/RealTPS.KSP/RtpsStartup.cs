@@ -107,6 +107,7 @@ namespace RealTPS
                 }
             }
             RtpsLog.Info("startup check: " + hosts + " enrolled host part(s), " + problems.Count + " problem(s)");
+            RtpsLog.Info(StockRadiationFix.Describe());
         }
 
         /// <summary>
@@ -195,6 +196,16 @@ namespace RealTPS
             if (AssemblyLoaded("B9PartSwitch") && B9SwitcherProxy.Find(prefab, module.switcherModuleId) == null)
             {
                 return Localizer.Format("#LOC_RTPS_startup_host", name, "no ModuleB9PartSwitch with moduleID '" + module.switcherModuleId + "'");
+            }
+            if (!string.IsNullOrEmpty(module.deployAnimation))
+            {
+                DeployAnimation.Match match;
+                if (ModuleRtpsShield.ResolveDeployModule(prefab, module.deployAnimation, out match) == null)
+                {
+                    return Localizer.Format("#LOC_RTPS_startup_host", name, match == DeployAnimation.Match.Ambiguous
+                        ? "several ModuleAnimateGeneric and none plays deployAnimation '" + module.deployAnimation + "'"
+                        : "no ModuleAnimateGeneric to play deployAnimation '" + module.deployAnimation + "'");
+                }
             }
             return null;
         }

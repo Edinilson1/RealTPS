@@ -34,13 +34,14 @@ skin temperature against its limit, and the heat the burning cork is carrying aw
 
 There's a lot more detail in the **[Wiki](docs/wiki/Home.md)**.
 
-## Current version: 0.20.0
+## Current version: 0.20.1
 
 **Download**: GitHub releases or CKAN\
 **Docs & support**: **[Wiki](docs/wiki/Home.md)** - GitHub issues\
 **License**: [MIT](LICENSE)\
 **KSP version**: 1.12.x\
 **Requires**: [ModuleManager], [B9PartSwitch]\
+**Recommended**: [KSPCommunityFixes] (fixes the stock radiation under time warp, see below)\
 **Optional**: [Community Tech Tree], Making History (adds the 1.875 m shield and the KV pods)
 
 **[Mod compatibility](#mod-compatibility-and-support)** - [Changelog](CHANGELOG.md)
@@ -122,6 +123,10 @@ RealTPS is still young, and most of it has only been tested by me. If something 
 - **Heat shields from other mods** aren't supported yet and keep their stock behaviour. Adding one is usually a
   single config entry, so pull requests are welcome ([Modding reference](docs/wiki/Modding.md)).
 - **Planet packs and Real Solar System** should work without any special setting.
+- **ReStock** works: a patch points RealTPS to ReStock's renamed inflatable heat shield animation.
+- **KSPCommunityFixes: recommended.** Under time warp between 1x and 100x (physical warp during a reentry, for
+  instance) the stock game over-counts radiation, so heat shields run cooler than at 1x: at 4x the radiation came
+  out twice as strong in a test flight. Its `FIUpdateRadiation` fix corrects that.
 
 ## Documentation, help and bug reports
 
@@ -148,4 +153,5 @@ was ever released under those names.
 [ModuleManager]: https://ksp.sarbian.com/jenkins/job/ModuleManager/lastStableBuild/
 [B9PartSwitch]: https://github.com/KSPModStewards/B9PartSwitch
 [Community Tech Tree]: https://github.com/post-kerbin-mining-corporation/CommunityTechTree
+[KSPCommunityFixes]: https://github.com/KSPModdingLibs/KSPCommunityFixes
 [CONTRIBUTING.md]: CONTRIBUTING.md

@@ -928,16 +928,38 @@ namespace RealTPS
 
         private ModuleAnimateGeneric FindDeployModule()
         {
-            for (int i = 0; i < part.Modules.Count; i++)
+            DeployAnimation.Match match;
+            ModuleAnimateGeneric animation = ResolveDeployModule(part, deployAnimation, out match);
+            if (match == DeployAnimation.Match.OnlyCandidate)
             {
-                var animation = part.Modules[i] as ModuleAnimateGeneric;
-                if (animation != null && animation.animationName == deployAnimation)
+                // A remodelled part (ReStock) renames the animation; the part's only one opens the shield.
+                RtpsLog.Info(PartLabel() + ": no ModuleAnimateGeneric plays '" + deployAnimation + "'; following the part's only one, '" + animation.animationName + "'");
+            }
+            else if (animation == null)
+            {
+                RtpsLog.Warn(PartLabel() + ": no ModuleAnimateGeneric plays '" + deployAnimation + "'"
+                    + (match == DeployAnimation.Match.Ambiguous ? " and the part has several" : string.Empty)
+                    + "; the shield is treated as fully deployed");
+            }
+            return animation;
+        }
+
+        /// <summary>The animation that opens a deployable shield; shared with the startup check.</summary>
+        internal static ModuleAnimateGeneric ResolveDeployModule(Part host, string configured, out DeployAnimation.Match match)
+        {
+            var modules = new List<ModuleAnimateGeneric>();
+            var names = new List<string>();
+            for (int i = 0; i < host.Modules.Count; i++)
+            {
+                var animation = host.Modules[i] as ModuleAnimateGeneric;
+                if (animation != null)
                 {
-                    return animation;
+                    modules.Add(animation);
+                    names.Add(animation.animationName);
                 }
             }
-            RtpsLog.Warn(PartLabel() + ": no ModuleAnimateGeneric plays '" + deployAnimation + "'; the shield is treated as fully deployed");
-            return null;
+            int index = DeployAnimation.Resolve(configured, names, out match);
+            return index >= 0 ? modules[index] : null;
         }
 
         /// <summary>Deployment of an inflatable or deployable shield, 0 = stowed, 1 = open. 1 for rigid shields.</summary>
@@ -1660,6 +1682,7 @@ namespace RealTPS
                 + " ut=" + now.ToString("F2", CultureInfo.InvariantCulture)
                 + " alt=" + F(vessel.altitude)
                 + " speed=" + F(vessel.srfSpeed)
+                + " warp=" + F(TimeWarp.CurrentRate)
                 + " skinT=" + F(skinTemp)
                 + " skinMax=" + F(part.skinMaxTemp)
                 + " intT=" + F(part.temperature)
@@ -1682,7 +1705,8 @@ namespace RealTPS
                 + " integrity=" + F(tpsIntegrity)
                 + " structure=" + F(tpsStructure)
                 + " bondMaxT=" + F(hottest)
-                + " shear=" + (tpsShearOverload ? "1" : "0"));
+                + " shear=" + (tpsShearOverload ? "1" : "0")
+                + (string.IsNullOrEmpty(deployAnimation) ? string.Empty : " deploy=" + (deployModule != null ? F(DeployProgress) : "none")));
         }
     }
 }

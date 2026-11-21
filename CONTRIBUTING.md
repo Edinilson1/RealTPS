@@ -94,6 +94,7 @@ data/hosts/*.cfg  ─────────────────┘        
 | `GameData/RealTPS/Materials/*.cfg` | The materials (`RTPS_MATERIAL`) |
 | `data/hosts/*.cfg` | The parts RealTPS enrols (`RTPS_HOST`), one file per mod |
 | `GameData/RealTPS/TechTree/<tree>.cfg` | Unlock nodes for another tech tree (for now, `CommunityTechTree.cfg`); every file there except `MaterialUnlocks.cfg` |
+| `GameData/RealTPS/Patches/Compatibility/<mod>.cfg` | Fixes for another mod that changes an enrolled part (for now, `ReStock.cfg`), one file per mod |
 | `GameData/RealTPS/Localization/<language>.cfg` | In-game text, one file per language |
 | `GameData/RealTPS/Difficulty/DifficultyPresets.cfg` | The values of the Friendly, Realistic and Strict presets |
 | `GameData/RealTPS/RealTPS.version` | The version, for KSP-AVC and CKAN (only changed for releases) |
